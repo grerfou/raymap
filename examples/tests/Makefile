@@ -1,11 +1,13 @@
 # Compiler
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c99
+CFLAGS =  -Wall -Wextra -std=c99
 INCLUDES = -I./../../src
 LIBS = -lraylib -lm -lpthread -ldl
 
 # Exemple à compiler
-EXAMPLE = 01_compilation
+
+#EXAMPLE = 01_compilation
+EXAMPLE = 02_surface_lifecycle
 
 
 

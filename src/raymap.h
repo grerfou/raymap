@@ -1,9 +1,9 @@
 /**********************************************************************************************
 *
-*   RayWarp v1.1.0 - Projection mapping and warping library for Raylib
+*   RayMap v1.1.0 - Projection mapping and warping library for Raylib
 *
 *   DESCRIPTION:
-*       RayWarp provides tools for projection mapping, surface warping, and interactive
+*       RayMap provides tools for projection mapping, surface warping, and interactive
 *       calibration. Perfect for video mapping installations, multi-projector setups,
 *       and creative projection on non-flat surfaces.
 *
@@ -13,7 +13,7 @@
 *       - raylib 5.0+ (https://www.raylib.com)
 *
 *   CONFIGURATION:
-*       #define RAYWARP_IMPLEMENTATION
+*       #define RAYMAP_IMPLEMENTATION
 *           Generates the implementation of the library into the included file.
 *           Should be defined in only ONE .c file to avoid duplication.
 *
@@ -38,7 +38,7 @@
 // Define and Macros
 //--------------------------------------------------------------------------------------------
 #ifndef RMAPI
-    #define RMAPI // functions defined as 'extern' by default (implicit specifiers)
+    #define RMAPI static inline// Vide pour implémentation
 #endif
 
 
@@ -84,33 +84,134 @@ typedef struct {
 // Surface Management Function
 //--------------------------------------------------------------------------------------------
 
-// Create map surface with given dimension and map mode
+// Creation surface cartographié
 RMAPI RM_Surface *RM_CreateSurface(int width, int height, RM_MapMode mode);
 
-
-
-
-
+// Distroy map surface
+RMAPI void RM_DestroySurface(RM_Surface *surface);
 
 #endif //RAYMAP_H
 
 
+/***********************************************************************************
+*
+*   RAYMAP IMPLEMENTATION
+*
+************************************************************************************/
+
+#if defined(RAYMAP_IMPLEMENTATION)
+
+#undef RMAPI
+#define RMAPI
 
 
 
+//#warning "RAYMAP_IMPLEMENTATION est défini !"
+
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <math.h>
 
 
+/***********************************************************************************
+*
+*   Defines and Macros
+*
+************************************************************************************/
 
 
+#ifndef RMMALLOC
+    #define RMMALLOC(sz)    malloc(sz)
+#endif
+#ifndef RMCALLOC
+    #define RMCALLOC(n, sz)     calloc(n, sz)
+#endif
+#ifndef RMFREE
+    #define RMFREE(p)       free(p)
+#endif
+
+/***********************************************************************************
+*
+*   Types and Structures Definition (internal)
+*
+************************************************************************************/
 
 
+struct RM_Surface {
+    int width;
+    int height;
+    RM_Quad quad;
+    RM_MapMode mode;
+    RenderTexture2D target;
+    Mesh mesh;
+    int meshColumns;
+    int meshRows;
+    bool meshNeedsUpdate;
+};
+
+struct RM_Calibration {
+    RM_Surface *surface;
+    RM_CalibrationConfig config;
+    int activeCorner;
+    Vector2 dragOffset;
+};
 
 
+/***********************************************************************************
+*
+*   Surface Management
+*
+************************************************************************************/
+
+RMAPI RM_Surface *RM_CreateSurface(int width, int height, RM_MapMode mode){
+    #warning "RM_CreateSurface est compilé!"
+    // Alloue memoire pour la structure 
+    RM_Surface *surface = (RM_Surface *)RMMALLOC(sizeof(RM_Surface));
+    if (!surface) return NULL; // gestion erreur
+
+    surface->width = width;
+    surface->height = height;
+    surface->mode = mode;
+
+    // Quad default (rectangle)
+    surface->quad = (RM_Quad) {
+        {0, 0},                         //topLeft
+        {(float)width, 0},              //topRight
+        {0, (float)height},             //bottomLeft
+        {(float)width, (float)height}   //bottomRight
+    };
+
+    // création RenderTexture
+    surface->target = LoadRenderTexture(width, height);
+
+    // Init mesh (vide pour l'instant)
+    surface->mesh = (Mesh){0};
+    surface->meshColumns = 16; // resolution default
+    surface->meshRows = 16;
+    surface->meshNeedsUpdate = true; 
+
+    return surface;
+
+}
+
+RMAPI void RM_DestroySurface(RM_Surface *surface){
+    // contre NULL
+    if (!surface) return;
+
+    // Liberer RenderTexture
+    UnloadRenderTexture(surface->target);
+
+    // Liberer Mesh
+    if (surface->mesh.vertices){
+        UnloadMesh(surface->mesh);
+    }
+
+    RMFREE(surface);
+}
 
 
-
-
-
+#endif //RAYMAP_IMPLEMENTATION
 
 
 

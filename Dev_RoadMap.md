@@ -18,13 +18,13 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 ```
 
 **Tests** :
-- [ ] Compilation sans erreurs
-- [ ] Inclusion dans un projet externe
-- [ ] Header guards fonctionnels
+- [x] Compilation sans erreurs
+- [x] Inclusion dans un projet externe
+- [x] Header guards fonctionnels
 
 ---
 
-### Étape 1.2 : Création et destruction de surfaces
+### Étape 1.2 : Création et destruction de surfaces ✅
 **But** : Gestion mémoire et lifecycle des surfaces
 
 **Commit** : `feat: surface creation and destruction with RenderTexture`
@@ -36,11 +36,11 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 ```
 
 **Tests** :
-- [ ] Test: Créer et détruire 1 surface → pas de leak
-- [ ] Test: Créer et détruire 100 surfaces → pas de leak
-- [ ] Test: RenderTexture valide après création
+- [x] Test: Créer et détruire 1 surface → pas de leak
+- [x] Test: Créer et détruire 100 surfaces → pas de leak
+- [x] Test: RenderTexture valide après création
 
-**Fichier test** : `test_01_surface_lifecycle.c`
+**Fichier test** : `02_surface_lifecycle.c`
 
 ---
 
@@ -625,20 +625,20 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 
 | Phase | Statut | Commits | Tests |
 |-------|--------|---------|-------|
-| 1. Foundation |  🔄 Done | 4 | 4 |
-| 2. Calibration |  🔄 Done | 3 | 3 |
-| 3. Mesh Warping |  🔄 Done | 3 | 3 |
-| 4. Homographie |  🔄 Done | 3 | 3 |
-| 5. Configuration I/O |  🔄 Partial | 2 | 2 |
-| 6. Utilitaires |  🔄 Partial | 2 | 2 |
-| 7. Multi-Surface |  🔄 Done | 1 | 1 |
+| 1. Foundation |  🔄 TODO | 4 | 4 |
+| 2. Calibration |  🔄 TODO | 3 | 3 |
+| 3. Mesh Warping |  🔄 TODO | 3 | 3 |
+| 4. Homographie |  🔄 TODO | 3 | 3 |
+| 5. Configuration I/O |  🔄 TODO | 2 | 2 |
+| 6. Utilitaires |  🔄 TODO | 2 | 2 |
+| 7. Multi-Surface |  🔄 TODO | 1 | 1 |
 | 8. Optimisations | 🔄 TODO | 0/2 | 0/2 |
 | 9. Features Avancées | 🔄 TODO | 0/3 | 0/3 |
 | 10. Shader Custom | 🔄 TODO | 0/2 | 0/2 |
 | 11. Documentation | 🔄 TODO | 0/3 | 0/3 |
 | 12. Extensions | 🔄 Future | 0/3 | 0/3 |
 
-**Total actuel** : 1 commits  | 0 tests 
+**Total actuel** : 1 commits  | 6 tests 
 
 ---
 
