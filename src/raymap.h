@@ -90,6 +90,15 @@ RMAPI RM_Surface *RM_CreateSurface(int width, int height, RM_MapMode mode);
 // Distroy map surface
 RMAPI void RM_DestroySurface(RM_Surface *surface);
 
+// Begin Draw on Surface
+RMAPI void RM_BeginSurface(RM_Surface *surface);
+
+// End Draw on Surface
+RMAPI void RM_EndSurface(RM_Surface *surface);
+
+// Display Surface
+RMAPI void RM_DrawSurface(const RM_Surface *surface);
+
 #endif //RAYMAP_H
 
 
@@ -103,10 +112,6 @@ RMAPI void RM_DestroySurface(RM_Surface *surface);
 
 #undef RMAPI
 #define RMAPI
-
-
-
-//#warning "RAYMAP_IMPLEMENTATION est défini !"
 
 #include <stdlib.h>
 #include <string.h>
@@ -165,7 +170,6 @@ struct RM_Calibration {
 ************************************************************************************/
 
 RMAPI RM_Surface *RM_CreateSurface(int width, int height, RM_MapMode mode){
-    #warning "RM_CreateSurface est compilé!"
     // Alloue memoire pour la structure 
     RM_Surface *surface = (RM_Surface *)RMMALLOC(sizeof(RM_Surface));
     if (!surface) return NULL; // gestion erreur
@@ -210,6 +214,44 @@ RMAPI void RM_DestroySurface(RM_Surface *surface){
     RMFREE(surface);
 }
 
+
+
+
+RMAPI void RM_BeginSurface(RM_Surface *surface){
+    if (!surface) return; // contre NULL
+    BeginTextureMode(surface->target);
+}
+
+RMAPI void RM_EndSurface(RM_Surface *surface){
+    if (!surface) return;
+    EndTextureMode();
+}
+
+
+RMAPI void RM_DrawSurface(const RM_Surface *surface){
+    if (!surface) return;
+    
+    Texture2D tex = surface->target.texture;
+    RM_Quad q = surface->quad;
+    
+    // Version simple avec DrawTexturePro
+    Rectangle source = { 
+        0, 0, 
+        (float)tex.width, 
+        -(float)tex.height  // Flip vertical
+    };
+    
+    Rectangle dest = { 
+        q.topLeft.x, 
+        q.topLeft.y, 
+        q.topRight.x - q.topLeft.x,   // width
+        q.bottomLeft.y - q.topLeft.y  // height
+    };
+    
+    Vector2 origin = { 0, 0 };
+    
+    DrawTexturePro(tex, source, dest, origin, 0.0f, WHITE);
+}
 
 #endif //RAYMAP_IMPLEMENTATION
 

@@ -7,7 +7,8 @@ LIBS = -lraylib -lm -lpthread -ldl
 # Exemple à compiler
 
 #EXAMPLE = 01_compilation
-EXAMPLE = 02_surface_lifecycle
+#EXAMPLE = 02_surface_lifecycle
+EXAMPLE = 03_simple_render
 
 
 

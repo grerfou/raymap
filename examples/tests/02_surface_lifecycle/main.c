@@ -7,13 +7,13 @@
 int main(void){
     InitWindow(800, 600, "Test surface lifgecycle");
 
-    printf("Test1: Créeet detruire une surface\n");
+    printf("\nTest1: Créeet detruire une surface\n");
     RM_Surface *s = RM_CreateSurface(800, 600, RM_MAP_MESH);
 
     if(s) {
-        printf("surface crée\n");
+        printf("\nsurface crée\n");
         RM_DestroySurface(s);
-        printf("surface détruite\n");
+        printf("\nsurface détruite\n");
     }
 
     printf("\n Test2: Crée et detruire 100 surface \n");
