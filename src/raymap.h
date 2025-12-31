@@ -38,12 +38,12 @@
 // Define and Macros
 //--------------------------------------------------------------------------------------------
 #ifndef RMAPI
-    #define RMAPI static inline// Vide pour implémentation
+    #define RMAPI extern //static inline// Vide pour implémentation
 #endif
 
 
 //--------------------------------------------------------------------------------------------
-// Types and structures Definitions
+// Types and structures Definitions (Public)
 //--------------------------------------------------------------------------------------------
 
 // Quad structure (define 4 point quadrilateral)
@@ -90,15 +90,6 @@ RMAPI RM_Surface *RM_CreateSurface(int width, int height, RM_MapMode mode);
 // Distroy map surface
 RMAPI void RM_DestroySurface(RM_Surface *surface);
 
-// Begin Draw on Surface
-RMAPI void RM_BeginSurface(RM_Surface *surface);
-
-// End Draw on Surface
-RMAPI void RM_EndSurface(RM_Surface *surface);
-
-// Display Surface
-RMAPI void RM_DrawSurface(const RM_Surface *surface);
-
 // Define corner for surface
 RMAPI void RM_SetQuad(RM_Surface *surface, RM_Quad quad);
 
@@ -107,6 +98,19 @@ RMAPI RM_Quad RM_GetQuad(const RM_Surface *surface);
 
 // Surface dimenssion
 RMAPI void RM_GetSurfaceSize(const RM_Surface *surface, int *width, int *height);
+
+//----------------------------------------------------------------
+// Rendering
+//----------------------------------------------------------------
+
+// Begin Draw on Surface
+RMAPI void RM_BeginSurface(RM_Surface *surface);
+
+// End Draw on Surface
+RMAPI void RM_EndSurface(RM_Surface *surface);
+
+// Display Surface
+RMAPI void RM_DrawSurface(const RM_Surface *surface);
 
 #endif //RAYMAP_H
 
@@ -122,6 +126,10 @@ RMAPI void RM_GetSurfaceSize(const RM_Surface *surface, int *width, int *height)
 #undef RMAPI
 #define RMAPI
 
+//-----------------------------------------------------------------
+// Implémentation include
+//-----------------------------------------------------------------
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -130,7 +138,7 @@ RMAPI void RM_GetSurfaceSize(const RM_Surface *surface, int *width, int *height)
 
 /***********************************************************************************
 *
-*   Defines and Macros
+*   Implémentation Defines and Macros
 *
 ************************************************************************************/
 
@@ -147,7 +155,7 @@ RMAPI void RM_GetSurfaceSize(const RM_Surface *surface, int *width, int *height)
 
 /***********************************************************************************
 *
-*   Types and Structures Definition (internal)
+*   Implémentation Types and Structures Definition (internal/private)
 *
 ************************************************************************************/
 
@@ -172,11 +180,140 @@ struct RM_Calibration {
 };
 
 
-/***********************************************************************************
-*
-*   Surface Management
-*
-************************************************************************************/
+//---------------------------------------------------------------
+// Implementation : Internal Functions
+//---------------------------------------------------------------
+
+static Vector2 rm_BilinearInterpolation(Vector2 p00, Vector2 p10, Vector2 p01, Vector2 p11, float u, float v){
+
+    // p00 = top-left, p10 = top-right
+    // p01 = bottom-left, p11 = bottom-right
+    // u = horizontal [0, 1], v = vertical [0, 1]
+
+    Vector2 result; 
+
+    // Bilinéar
+    result.x = (1.0f - u) * (1.0f - v) * p00.x +
+               u * (1.0f - v) * p10.x +
+               (1.0f - u) * v * p01.x +
+               u * v * p11.x;
+
+    result.y = (1.0f - u) * (1.0f - v) * p00.y +
+               u * (1.0f - v) * p10.y +
+               (1.0f - u) * v * p01.y +
+               u * v * p11.y;
+
+    return result;
+}
+
+static void rm_GenerateBilinearMesh(RM_Surface *surface, int cols, int rows){
+    if (!surface) return;
+    
+
+    // VBertice number and triangles
+    int vertexCount = (cols + 1) * (rows + 1);
+    int triangleCount = cols * rows * 2; //2 triangles
+
+
+    // Allouer Mesh
+    Mesh mesh = {0};
+    mesh.vertexCount = vertexCount;
+    mesh.triangleCount = triangleCount;
+
+    mesh.vertices = (float *)RMCALLOC(vertexCount * 3, sizeof(float));
+    mesh.texcoords = (float *)RMCALLOC(vertexCount * 2, sizeof(float));
+    mesh.normals = (float *)RMCALLOC(vertexCount * 3, sizeof(float));
+    mesh.indices = (unsigned short *)RMCALLOC(triangleCount * 3, sizeof(unsigned short));
+
+    RM_Quad q = surface->quad;
+
+    // Vertice
+    int vIdx = 0;
+    for (int y= 0; y <= rows; y++){
+        for (int x = 0; x <= cols; x++){
+            float u = (float)x / (float)cols;
+            float v = (float)y / (float)rows;
+
+            Vector2 pos = rm_BilinearInterpolation(
+                    q.topLeft, q.topRight,
+                    q.bottomLeft, q.bottomRight,
+                    u, v
+                    );
+
+            // Vertex pos 
+            mesh.vertices[vIdx * 3 + 0] = pos.x;
+            mesh.vertices[vIdx * 3 + 1] = pos.y;
+            mesh.vertices[vIdx * 3 + 2] = 0.0f;
+
+            // coordonnées tecture
+            mesh.texcoords[vIdx * 2 + 0] = u;
+            mesh.texcoords[vIdx * 2 + 1] = 1.0f - v;
+
+            // Normal
+            mesh.normals[vIdx * 3 + 0] = 0.0f;
+            mesh.normals[vIdx * 3 + 1] = 0.0f;
+            mesh.normals[vIdx * 3 + 2] = 1.0f;
+
+            vIdx++;
+        }
+    }
+
+    // Indices 2 triangle/(quad)
+    int iIdx = 0;
+    for (int y = 0; y < rows; y++){
+        for(int x = 0; x < cols; x++){
+            // Indices coin quad
+            int topLeft = y * (cols + 1) + x;
+            int topRight = topLeft + 1;
+            int bottomLeft = (y + 1) * (cols + 1) + x;
+            int bottomRight = bottomLeft + 1;
+
+            // Triangle 1
+            mesh.indices[iIdx++] = topLeft;
+            mesh.indices[iIdx++] = topRight;
+            mesh.indices[iIdx++] = bottomLeft;
+
+            // Triangle 2
+            mesh.indices[iIdx++] = topRight;
+            mesh.indices[iIdx++] = bottomRight;
+            mesh.indices[iIdx++] = bottomLeft;
+        }
+    }
+
+    // Upload in GPU
+    UploadMesh(&mesh, false);
+
+    // Replace mesh
+    if (surface->mesh.vertices){
+        UnloadMesh(surface->mesh);
+    }
+
+    surface->mesh = mesh;
+    surface->meshNeedsUpdate = false;
+
+    printf(" Mesh généré et uploadé\n");
+
+}
+
+
+static void rm_UpdateMesh(RM_Surface *surface){
+    if (!surface || !surface->meshNeedsUpdate) return;
+
+    rm_GenerateBilinearMesh(surface, surface->meshColumns, surface->meshRows);
+}
+
+
+
+//---------------------------------------------------------------
+// Implementation: Puiblic API
+//---------------------------------------------------------------
+
+
+//---------------------------------------------------------------
+// Surface manage
+//----------------------------------------------------------------
+
+
 
 RMAPI RM_Surface *RM_CreateSurface(int width, int height, RM_MapMode mode){
     // Alloue memoire pour la structure 
@@ -204,9 +341,13 @@ RMAPI RM_Surface *RM_CreateSurface(int width, int height, RM_MapMode mode){
     surface->meshRows = 16;
     surface->meshNeedsUpdate = true; 
 
-    return surface;
+    rm_UpdateMesh(surface);
 
+    return surface;
 }
+
+
+
 
 RMAPI void RM_DestroySurface(RM_Surface *surface){
     // contre NULL
@@ -224,52 +365,11 @@ RMAPI void RM_DestroySurface(RM_Surface *surface){
 }
 
 
-
-
-RMAPI void RM_BeginSurface(RM_Surface *surface){
-    if (!surface) return; // contre NULL
-    BeginTextureMode(surface->target);
-}
-
-RMAPI void RM_EndSurface(RM_Surface *surface){
-    if (!surface) return;
-    EndTextureMode();
-}
-
-RMAPI void RM_DrawSurface(const RM_Surface *surface){
-    if (!surface) return;
-    
-    Texture2D tex = surface->target.texture;
-    RM_Quad q = surface->quad;
-    
-    // VERSION 1 : DrawTexturePro (rectangle)
-    Rectangle source = { 0, 0, (float)tex.width, -(float)tex.height };
-    Rectangle dest = { 
-        q.topLeft.x, 
-        q.topLeft.y, 
-        q.topRight.x - q.topLeft.x,
-        q.bottomLeft.y - q.topLeft.y
-    };
-    DrawTexturePro(tex, source, dest, (Vector2){0,0}, 0.0f, WHITE);
-    
-    // DEBUG : Dessiner les coins du quad
-    DrawCircleV(q.topLeft, 10, RED);
-    DrawCircleV(q.topRight, 10, GREEN);
-    DrawCircleV(q.bottomLeft, 10, BLUE);
-    DrawCircleV(q.bottomRight, 10, YELLOW);
-    
-    // Dessiner les lignes du quad
-    DrawLineV(q.topLeft, q.topRight, RED);
-    DrawLineV(q.topRight, q.bottomRight, GREEN);
-    DrawLineV(q.bottomRight, q.bottomLeft, BLUE);
-    DrawLineV(q.bottomLeft, q.topLeft, YELLOW);
-}
-
-
 RMAPI void RM_SetQuad(RM_Surface *surface, RM_Quad quad){
     if (!surface) return;
 
     surface->quad = quad;
+    surface->meshNeedsUpdate = true;
     
     bool isDegenerate = (
         quad.topLeft.x == quad.topRight.x &&
@@ -287,7 +387,6 @@ RMAPI void RM_SetQuad(RM_Surface *surface, RM_Quad quad){
 
 RMAPI RM_Quad RM_GetQuad (const RM_Surface *surface){
     if (!surface){
-        printf("Quad Vide ...");
         return (RM_Quad){ {0, 0}, {0, 0}, {0, 0}, {0, 0} };
     };
 
@@ -303,10 +402,47 @@ RMAPI void RM_GetSurfaceSize(const RM_Surface *surface, int *width, int *height)
 }
 
 
+//-----------------------------------------------------------------
+// Rendering
+//-----------------------------------------------------------------
+
+RMAPI void RM_BeginSurface(RM_Surface *surface){
+    if (!surface) return; // contre NULL
+    BeginTextureMode(surface->target);
+}
+
+RMAPI void RM_EndSurface(RM_Surface *surface){
+    if (!surface) return;
+    EndTextureMode();
+}
+
+RMAPI void RM_DrawSurface(const RM_Surface *surface){
+    if (!surface) return;
+
+
+    // Update if nessesary
+    if (surface->meshNeedsUpdate){
+        rm_UpdateMesh((RM_Surface * )surface);
+    }
+    
+    Texture2D tex = surface->target.texture;
+
+
+    // Draw mesh with texturte
+    if (surface->mesh.vertices){
+        Material mat = LoadMaterialDefault();
+        SetMaterialTexture(&mat, MATERIAL_MAP_DIFFUSE, tex);
+
+        rlDisableDepthTest();
+        rlDisableBackfaceCulling();
+        DrawMesh(surface->mesh, mat, MatrixIdentity());
+        rlEnableBackfaceCulling();
+        rlEnableDepthTest();
+        // retourne static material
+    } else{
+        printf(" PAS DE VERTICES !!!!!!!!!!!!!!!!\n");
+    }
+}
 
 #endif //RAYMAP_IMPLEMENTATION
-
-
-
-
 

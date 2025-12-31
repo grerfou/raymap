@@ -118,10 +118,10 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 ```
 
 **Tests** :
-- [ ] Test: Mesh 16x16 → pas de ligne visible au milieu
-- [ ] Test: Déformation forte → warp lisse
-- [ ] Test: Les 4 coins indépendants fonctionnent
-- [ ] Test: Comparaison avant/après subdivision
+- [x] Test: Mesh 16x16 → pas de ligne visible au milieu
+- [x] Test: Déformation forte → warp lisse
+- [x] Test: Les 4 coins indépendants fonctionnent
+- [x] Test: Comparaison avant/après subdivision
 
 **Fichier test** : `05_mesh_subdivision/`
 
