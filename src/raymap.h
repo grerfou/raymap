@@ -99,6 +99,15 @@ RMAPI void RM_EndSurface(RM_Surface *surface);
 // Display Surface
 RMAPI void RM_DrawSurface(const RM_Surface *surface);
 
+// Define corner for surface
+RMAPI void RM_SetQuad(RM_Surface *surface, RM_Quad quad);
+
+// Récupére coin corner
+RMAPI RM_Quad RM_GetQuad(const RM_Surface *surface);
+
+// Surface dimenssion
+RMAPI void RM_GetSurfaceSize(const RM_Surface *surface, int *width, int *height);
+
 #endif //RAYMAP_H
 
 
@@ -227,31 +236,73 @@ RMAPI void RM_EndSurface(RM_Surface *surface){
     EndTextureMode();
 }
 
-
 RMAPI void RM_DrawSurface(const RM_Surface *surface){
     if (!surface) return;
     
     Texture2D tex = surface->target.texture;
     RM_Quad q = surface->quad;
     
-    // Version simple avec DrawTexturePro
-    Rectangle source = { 
-        0, 0, 
-        (float)tex.width, 
-        -(float)tex.height  // Flip vertical
-    };
-    
+    // VERSION 1 : DrawTexturePro (rectangle)
+    Rectangle source = { 0, 0, (float)tex.width, -(float)tex.height };
     Rectangle dest = { 
         q.topLeft.x, 
         q.topLeft.y, 
-        q.topRight.x - q.topLeft.x,   // width
-        q.bottomLeft.y - q.topLeft.y  // height
+        q.topRight.x - q.topLeft.x,
+        q.bottomLeft.y - q.topLeft.y
     };
+    DrawTexturePro(tex, source, dest, (Vector2){0,0}, 0.0f, WHITE);
     
-    Vector2 origin = { 0, 0 };
+    // DEBUG : Dessiner les coins du quad
+    DrawCircleV(q.topLeft, 10, RED);
+    DrawCircleV(q.topRight, 10, GREEN);
+    DrawCircleV(q.bottomLeft, 10, BLUE);
+    DrawCircleV(q.bottomRight, 10, YELLOW);
     
-    DrawTexturePro(tex, source, dest, origin, 0.0f, WHITE);
+    // Dessiner les lignes du quad
+    DrawLineV(q.topLeft, q.topRight, RED);
+    DrawLineV(q.topRight, q.bottomRight, GREEN);
+    DrawLineV(q.bottomRight, q.bottomLeft, BLUE);
+    DrawLineV(q.bottomLeft, q.topLeft, YELLOW);
 }
+
+
+RMAPI void RM_SetQuad(RM_Surface *surface, RM_Quad quad){
+    if (!surface) return;
+
+    surface->quad = quad;
+    
+    bool isDegenerate = (
+        quad.topLeft.x == quad.topRight.x &&
+        quad.topLeft.y == quad.topRight.y &&
+        quad.topLeft.x == quad.bottomLeft.x &&
+        quad.topLeft.y == quad.bottomLeft.y &&
+        quad.topLeft.x == quad.bottomRight.x &&
+        quad.topLeft.y == quad.bottomRight.y
+    );
+
+    if (isDegenerate){
+        printf("Quad dégénérer");
+    };
+}
+
+RMAPI RM_Quad RM_GetQuad (const RM_Surface *surface){
+    if (!surface){
+        printf("Quad Vide ...");
+        return (RM_Quad){ {0, 0}, {0, 0}, {0, 0}, {0, 0} };
+    };
+
+    return surface->quad;
+}
+
+
+RMAPI void RM_GetSurfaceSize(const RM_Surface *surface, int *width, int *height){
+    if (!surface) return;
+
+    if (width) *width = surface->width;
+    if (height) *height = surface->height;
+}
+
+
 
 #endif //RAYMAP_IMPLEMENTATION
 

@@ -2,11 +2,13 @@
 
 Plan détaillé du développement de RayMap avec objectifs, commits et tests pour chaque étape.
 
+**Note** : Ce plan suit l'ordre de développement réel. Certaines étapes sont réorganisées pour prioriser les fonctionnalités critiques.
+
 ---
 
-## Phase 1 : Foundation (MVP)
+## Phase 1 : Foundation (MVP) ✅ EN COURS
 
-### Étape 1.1 : Architecture de base  ✅
+### Étape 1.1 : Architecture de base ✅ COMPLÈTE
 **But** : Créer la structure header-only avec API publique/privée
 
 **Commit** : `feat: initial library structure with opaque types`
@@ -22,9 +24,11 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 - [x] Inclusion dans un projet externe
 - [x] Header guards fonctionnels
 
+**Fichier test** : `01_compilation/`
+
 ---
 
-### Étape 1.2 : Création et destruction de surfaces ✅
+### Étape 1.2 : Création et destruction de surfaces ✅ COMPLÈTE
 **But** : Gestion mémoire et lifecycle des surfaces
 
 **Commit** : `feat: surface creation and destruction with RenderTexture`
@@ -33,6 +37,7 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 - RM_DestroySurface()
 - Allocation RenderTexture
 - Quad par défaut
+- Fix RMAPI pour linkage correct
 ```
 
 **Tests** :
@@ -40,49 +45,136 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 - [x] Test: Créer et détruire 100 surfaces → pas de leak
 - [x] Test: RenderTexture valide après création
 
-**Fichier test** : `02_surface_lifecycle.c`
+**Fichier test** : `02_surface_lifecycle/`
+
+**Leçons apprises** :
+- RMAPI doit être redéfini dans le bloc RAYMAP_IMPLEMENTATION
+- `#undef RMAPI` puis `#define RMAPI` (vide) pour l'implémentation
 
 ---
 
-### Étape 1.3 : Rendu simple (quad basique)
+### Étape 1.3 : Rendu simple (quad basique) ✅ COMPLÈTE
 **But** : Afficher du contenu sur une surface non-déformée
 
 **Commit** : `feat: basic quad rendering with texture mapping`
 ```
 - RM_BeginSurface() / RM_EndSurface()
-- RM_DrawSurface() avec simple quad
+- RM_DrawSurface() avec DrawTexturePro
 - Mapping UV correct (fix flip RenderTexture)
 ```
 
 **Tests** :
-- [ ] Test: Contenu visible sans déformation
-- [ ] Test: Pas d'effet miroir
-- [ ] Test: Coordonnées de texture correctes
+- [x] Test: Contenu visible sans déformation
+- [x] Test: Pas d'effet miroir
+- [x] Test: Coordonnées de texture correctes
 
-**Fichier test** : `test_02_simple_render.c`
+**Fichier test** : `03_simple_render/`
+
+**Leçons apprises** :
+- DrawTexturePro plus fiable que rlgl pour quads simples
+- RenderTexture nécessite flip vertical (source.height négatif)
+- rlgl nécessite rlDrawRenderBatchActive() pour fonctionner
 
 ---
 
-### Étape 1.4 : Gestion des quads
-**But** : Permettre la déformation du quad
+### Étape 1.4 : Gestion des quads ✅ COMPLÈTE
+**But** : Permettre la déformation du quad (API seulement)
 
 **Commit** : `feat: quad manipulation (set/get corners)`
 ```
 - RM_SetQuad()
 - RM_GetQuad()
-- Validation des quads
+- RM_GetSurfaceSize()
 ```
 
 **Tests** :
-- [ ] Test: Set quad déformé → affichage correct
-- [ ] Test: Get quad retourne valeurs correctes
-- [ ] Test: Quad dégénéré géré gracieusement
+- [x] Test: Set quad déformé → valeurs changent
+- [x] Test: Get quad retourne valeurs correctes
+- [x] Test: Animation du quad fonctionne
 
-**Fichier test** : `test_03_quad_manipulation.c`
+**Fichier test** : `04_quad_manipulation/`
+
+**Note importante** : 
+- DrawTexturePro dessine uniquement des rectangles (pas de vraie déformation)
+- La vraie déformation nécessite un mesh subdivisé (Étape 3.1)
+- Les coins bottomRight sont ignorés par DrawTexturePro
+- **C'est normal et attendu** - résolu à l'étape suivante
 
 ---
 
-## Phase 2 : Calibration Interactive 
+## Phase 3 : Mesh Warping 🔄 PRIORISÉ
+
+> **Décision** : Phase 3 déplacée avant Phase 2 (Calibration) pour résoudre le problème de déformation des quads. La calibration sera plus utile une fois le vrai warping fonctionnel.
+
+### Étape 3.1 : Subdivision bilinéaire 🔄 EN COURS
+**But** : Remplacer le quad simple par un mesh subdivisé
+
+**Commit** : `feat: bilinear mesh subdivision for smooth warping`
+```
+- rm_GenerateBilinearMesh()
+- Interpolation bilinéaire des vertices
+- Résolution configurable (16x16 par défaut)
+- Remplacement de DrawTexturePro par DrawMesh
+```
+
+**Tests** :
+- [ ] Test: Mesh 16x16 → pas de ligne visible au milieu
+- [ ] Test: Déformation forte → warp lisse
+- [ ] Test: Les 4 coins indépendants fonctionnent
+- [ ] Test: Comparaison avant/après subdivision
+
+**Fichier test** : `05_mesh_subdivision/`
+
+**Pourquoi maintenant** :
+- Résout le problème de DrawTexturePro (rectangles uniquement)
+- Permet la vraie déformation de quads
+- Nécessaire avant la calibration interactive
+
+---
+
+### Étape 3.2 : Résolution dynamique
+**But** : Permettre l'ajustement de la qualité du mesh
+
+**Commit** : `feat: dynamic mesh resolution adjustment`
+```
+- RM_SetMeshResolution()
+- RM_GetMeshResolution()
+- Régénération automatique du mesh
+- Flag meshNeedsUpdate
+```
+
+**Tests** :
+- [ ] Test: Augmenter résolution → meilleure qualité
+- [ ] Test: Diminuer résolution → meilleure performance
+- [ ] Test: Résolution min/max respectées (4x4 à 64x64)
+
+**Fichier test** : `06_mesh_resolution/`
+
+---
+
+### Étape 3.3 : Modes de warp
+**But** : Implémenter les deux modes (MESH et PERSPECTIVE)
+
+**Commit** : `feat: warp modes with mesh/perspective options`
+```
+- RM_SetWarpMode() / RM_GetWarpMode()
+- Mode MESH : interpolation bilinéaire
+- Mode PERSPECTIVE : préparation homographie (stub)
+- Résolution par défaut selon mode
+```
+
+**Tests** :
+- [ ] Test: Mode MESH fonctionne
+- [ ] Test: Switch entre modes
+- [ ] Test: Performance acceptable (>60 FPS)
+
+**Fichier test** : `07_warp_modes/`
+
+---
+
+## Phase 2 : Calibration Interactive 🔄 APRÈS MESH
+
+> **Décision** : Phase 2 déplacée après Phase 3. La calibration est plus utile une fois qu'on peut voir la vraie déformation.
 
 ### Étape 2.1 : Calibration basique
 **But** : Permettre le déplacement des coins à la souris
@@ -99,7 +191,7 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 - [ ] Test: Glisser coin → déplacement
 - [ ] Test: Relâcher souris → fin sélection
 
-**Fichier test** : `test_04_calibration_input.c`
+**Fichier test** : `08_calibration_input/`
 
 ---
 
@@ -120,7 +212,7 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 - [ ] Test: Bordure suit le quad
 - [ ] Test: Corner actif change de couleur
 
-**Fichier test** : `test_05_calibration_ui.c`
+**Fichier test** : `09_calibration_ui/`
 
 ---
 
@@ -135,74 +227,15 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 ```
 
 **Tests** :
-- [ ] Test: Reset → quad revient à rectangle
+- [ ] Test: Reset → quad revient à rectangle centré
 - [ ] Test: GetActiveCorner retourne bon index
 - [ ] Test: IsCalibrating correct pendant drag
 
-**Fichier test** : `test_06_calibration_utils.c`
+**Fichier test** : `10_calibration_utils/`
 
 ---
 
-## Phase 3 : Mesh Warping
-
-### Étape 3.1 : Subdivision bilinéaire
-**But** : Remplacer le quad simple par un mesh subdivisé
-
-**Commit** : `feat: bilinear mesh subdivision for smooth warping`
-```
-- rm_GenerateBilinearMesh()
-- Interpolation bilinéaire des vertices
-- Résolution configurable
-```
-
-**Tests** :
-- [ ] Test: Mesh 10x10 → pas de ligne visible au milieu
-- [ ] Test: Déformation forte → warp lisse
-- [ ] Test: Comparaison avant/après subdivision
-
-**Fichier test** : `test_07_mesh_subdivision.c`
-
----
-
-### Étape 3.2 : Résolution dynamique
-**But** : Permettre l'ajustement de la qualité du mesh
-
-**Commit** : `feat: dynamic mesh resolution adjustment`
-```
-- RM_SetMeshResolution()
-- RM_GetMeshResolution()
-- Régénération automatique du mesh
-```
-
-**Tests** :
-- [ ] Test: Augmenter résolution → meilleure qualité
-- [ ] Test: Diminuer résolution → meilleure performance
-- [ ] Test: Résolution min/max respectées
-
-**Fichier test** : `test_08_mesh_resolution.c`
-
----
-
-### Étape 3.3 : Mode MESH
-**But** : Première implémentation de mode de warp
-
-**Commit** : `feat: MESH warp mode with configurable quality`
-```
-- Enum RM_WarpMode avec RM_WARP_MESH
-- RM_SetWarpMode() / RM_GetWarpMode()
-- Résolution par défaut (16x16)
-```
-
-**Tests** :
-- [ ] Test: Mode MESH fonctionne
-- [ ] Test: Switch mode régénère mesh
-- [ ] Test: Performance acceptable (>60 FPS)
-
-**Fichier test** : `test_09_mesh_mode.c`
-
----
-
-## Phase 4 : Homographie Perspective
+## Phase 4 : Homographie Perspective 🔄 TODO
 
 ### Étape 4.1 : Mathématiques homographie
 **But** : Calculer la matrice 3x3 de transformation projective
@@ -221,17 +254,17 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 - [ ] Test: ApplyHomography sur points connus
 - [ ] Test: Inverse de matrice correcte
 
-**Fichier test** : `test_10_homography_math.c`
+**Fichier test** : `11_homography_math/`
 
 ---
 
-### Étape 4.2 : Mode PERSPECTIVE
+### Étape 4.2 : Mode PERSPECTIVE complet
 **But** : Utiliser l'homographie pour le warping
 
 **Commit** : `feat: PERSPECTIVE mode using homography transformation`
 ```
-- RM_WARP_PERSPECTIVE dans enum
-- Mesh généré avec homographie
+- Implémentation complète de rm_ComputeHomography()
+- Mesh généré avec homographie (pas bilinéaire)
 - Résolution haute (32x32) par défaut
 ```
 
@@ -241,7 +274,7 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 - [ ] Test: Comparaison MESH vs PERSPECTIVE
 - [ ] Test: Points mappés correctement
 
-**Fichier test** : `test_11_perspective_mode.c`
+**Fichier test** : `12_perspective_mode/`
 
 ---
 
@@ -261,11 +294,11 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 - [ ] Test: FPS pour chaque mode
 - [ ] Test: Qualité vs résolution
 
-**Fichier test** : `test_12_mode_comparison.c`
+**Fichier test** : `13_mode_comparison/`
 
 ---
 
-## Phase 5 : Configuration I/O 
+## Phase 5 : Configuration I/O 🔄 TODO
 
 ### Étape 5.1 : Save/Load texte
 **But** : Sauvegarder les configurations de quad
@@ -283,11 +316,11 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 - [ ] Test: Fichier invalide géré gracieusement
 - [ ] Test: Round-trip save→load identique
 
-**Fichier test** : `test_13_config_io.c`
+**Fichier test** : `14_config_io/`
 
 ---
 
-### Étape 5.2 : Export JSON (TODO)
+### Étape 5.2 : Export JSON
 **But** : Format standard pour partage et outils externes
 
 **Commit** : `feat: JSON export/import for configuration`
@@ -302,11 +335,11 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 - [ ] Test: Import JSON → quad correct
 - [ ] Test: Compatibilité avec outils JSON
 
-**Fichier test** : `test_14_json_config.c`
+**Fichier test** : `15_json_config/`
 
 ---
 
-## Phase 6 : Utilitaires 
+## Phase 6 : Utilitaires 🔄 TODO
 
 ### Étape 6.1 : Géométrie de base
 **But** : Fonctions utilitaires pour quads
@@ -323,7 +356,7 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 - [ ] Test: Point hors quad → false
 - [ ] Test: Bounds correctes
 
-**Fichier test** : `test_15_geometry_utils.c`
+**Fichier test** : `16_geometry_utils/`
 
 ---
 
@@ -341,11 +374,11 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 - [ ] Test: Coins du quad correctement mappés
 - [ ] Test: Centre du quad
 
-**Fichier test** : `test_16_point_mapping.c`
+**Fichier test** : `17_point_mapping/`
 
 ---
 
-## Phase 7 : Multi-Surface 
+## Phase 7 : Multi-Surface 🔄 TODO
 
 ### Étape 7.1 : Support multi-surfaces
 **But** : Gérer plusieurs surfaces indépendantes
@@ -363,287 +396,39 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 - [ ] Test: Performance multi-surface
 - [ ] Test: Save/Load toutes surfaces
 
-**Fichier test** : `test_17_multi_surface.c` (déjà créé : `multi_surface.c`)
+**Fichier test** : `18_multi_surface/`
 
 ---
 
-## Phase 8 : Optimisations (TODO)
-
-### Étape 8.1 : Cache et mise à jour conditionnelle
-**But** : Ne régénérer le mesh que si nécessaire
-
-**Commit** : `perf: conditional mesh regeneration with dirty flags`
-```
-- Flags meshNeedsUpdate / homographyNeedsUpdate
-- Cache de matrice homographique
-- Optimisation DrawSurface
-```
-
-**Tests** :
-- [ ] Test: Pas de régénération inutile
-- [ ] Test: FPS améliorés
-- [ ] Benchmark avant/après
-
-**Fichier test** : `test_18_performance_cache.c`
-
----
-
-### Étape 8.2 : LOD (Level of Detail)
-**But** : Adapter automatiquement la résolution
-
-**Commit** : `feat: automatic LOD based on quad size`
-```
-- Calcul taille quad à l'écran
-- Résolution adaptative
-- Seuils configurables
-```
-
-**Tests** :
-- [ ] Test: Grand quad → haute résolution
-- [ ] Test: Petit quad → basse résolution
-- [ ] Test: FPS stables
-
-**Fichier test** : `test_19_lod_system.c`
-
----
-
-## Phase 9 : Features Avancées (TODO)
-
-### Étape 9.1 : Edge blending
-**But** : Fondu entre surfaces qui se chevauchent
-
-**Commit** : `feat: edge blending for overlapping projections`
-```
-- Zones de blend configurables
-- Alpha gradient automatique
-- Calibration overlap
-```
-
-**Tests** :
-- [ ] Test: 2 surfaces qui se chevauchent
-- [ ] Test: Blend smooth sans bande visible
-- [ ] Test: Configuration zones de blend
-
-**Fichier test** : `test_20_edge_blending.c`
-
----
-
-### Étape 9.2 : Masques alpha
-**But** : Formes non-rectangulaires
-
-**Commit** : `feat: alpha masks for non-rectangular shapes`
-```
-- Support masque texture
-- Masque par vertex
-- Masque procédural
-```
-
-**Tests** :
-- [ ] Test: Masque circulaire
-- [ ] Test: Masque custom texture
-- [ ] Test: Performance avec masque
-
-**Fichier test** : `test_21_alpha_masks.c`
-
----
-
-### Étape 9.3 : Keystone correction automatique
-**But** : Détection et correction automatique de perspective
-
-**Commit** : `feat: automatic keystone correction from markers`
-```
-- Détection de markers
-- Calcul auto de homographie
-- Assistant de calibration
-```
-
-**Tests** :
-- [ ] Test: 4 markers → quad correct
-- [ ] Test: Markers partiels → estimation
-- [ ] Test: Précision correction
-
-**Fichier test** : `test_22_auto_keystone.c`
-
----
-
-## Phase 10 : Shader Custom (TODO)
-
-### Étape 10.1 : Fragment shader perspective
-**But** : Correction perspective pixel-perfect
-
-**Commit** : `feat: perspective correction fragment shader`
-```
-- Shader GLSL custom
-- Calcul homographie dans shader
-- Fallback si shader fail
-```
-
-**Tests** :
-- [ ] Test: Shader compile et fonctionne
-- [ ] Test: Qualité supérieure au mesh
-- [ ] Test: Performance acceptable
-- [ ] Test: Fallback mesh si échec
-
-**Fichier test** : `test_23_perspective_shader.c`
-
----
-
-### Étape 10.2 : Effets shader
-**But** : Effets visuels en temps réel
-
-**Commit** : `feat: real-time shader effects (blur, color correction)`
-```
-- Blur
-- Color grading
-- Brightness/Contrast
-- Custom shaders utilisateur
-```
-
-**Tests** :
-- [ ] Test: Chaque effet fonctionne
-- [ ] Test: Combinaison d'effets
-- [ ] Test: Performance
-
-**Fichier test** : `test_24_shader_effects.c`
-
----
-
-## Phase 11 : Documentation et Polish (TODO)
-
-### Étape 11.1 : Documentation API complète
-**But** : Documenter toutes les fonctions
-
-**Commit** : `docs: comprehensive API documentation`
-```
-- Doxygen comments
-- Guide utilisateur
-- Exemples de code
-```
-
-**Tests** :
-- [ ] Doxygen génère docs sans erreur
-- [ ] Tous les exemples compilent
-- [ ] Guide complet et clair
-
----
-
-### Étape 11.2 : Exemples supplémentaires
-**But** : Couvrir tous les cas d'usage
-
-**Commit** : `examples: add comprehensive usage examples`
-```
-- Exemple basique
-- Exemple multi-projecteur
-- Exemple avec vidéo
-- Exemple intégration game
-```
-
-**Tests** :
-- [ ] Tous les exemples compilent
-- [ ] Exemples fonctionnent sur toutes plateformes
-
----
-
-### Étape 11.3 : Tests automatisés
-**But** : CI/CD et tests unitaires
-
-**Commit** : `test: automated test suite with CI`
-```
-- Tests unitaires complets
-- GitHub Actions CI
-- Tests cross-platform
-```
-
-**Tests** :
-- [ ] CI passe sur Linux/Mac/Windows
-- [ ] Coverage > 80%
-- [ ] Tests rapides (<1min)
-
----
-
-## Phase 12 : Extensions (Futur)
-
-### Étape 12.1 : Support 3D
-**But** : Projection sur objets 3D
-
-**Commit** : `feat: 3D surface mapping (cubes, spheres, custom meshes)`
-```
-- RM_CreateSurface3D()
-- Mapping sur mesh 3D
-- Caméra virtuelle
-```
-
-**Tests** :
-- [ ] Test: Projection sur cube
-- [ ] Test: Projection sur sphère
-- [ ] Test: Mesh custom
-
-**Fichier test** : `test_25_3d_mapping.c`
-
----
-
-### Étape 12.2 : Entrée vidéo
-**But** : Support de flux vidéo en temps réel
-
-**Commit** : `feat: video input support (webcam, files, streams)`
-```
-- Intégration video decoder
-- Streaming temps réel
-- Performance optimisée
-```
-
-**Tests** :
-- [ ] Test: Fichier vidéo
-- [ ] Test: Webcam
-- [ ] Test: Stream réseau
-- [ ] Test: 60 FPS minimum
-
-**Fichier test** : `test_26_video_input.c`
-
----
-
-### Étape 12.3 : Network sync
-**But** : Synchronisation multi-machine
-
-**Commit** : `feat: network synchronization for distributed setups`
-```
-- Protocole sync
-- Master/slave setup
-- Time sync précis
-```
-
-**Tests** :
-- [ ] Test: 2 machines synchronisées
-- [ ] Test: Latence < 16ms
-- [ ] Test: Récupération après déconnexion
-
-**Fichier test** : `test_27_network_sync.c`
+## Phases suivantes (TODO)
+
+Les phases 8-12 restent inchangées :
+- **Phase 8** : Optimisations (cache, LOD)
+- **Phase 9** : Features avancées (edge blending, masques, keystone auto)
+- **Phase 10** : Shader custom (perspective pixel-perfect, effets)
+- **Phase 11** : Documentation et polish
+- **Phase 12** : Extensions (3D, vidéo, network sync)
 
 ---
 
 ## Récapitulatif des Phases
 
-| Phase | Statut | Commits | Tests |
-|-------|--------|---------|-------|
-| 1. Foundation |  🔄 TODO | 4 | 4 |
-| 2. Calibration |  🔄 TODO | 3 | 3 |
-| 3. Mesh Warping |  🔄 TODO | 3 | 3 |
-| 4. Homographie |  🔄 TODO | 3 | 3 |
-| 5. Configuration I/O |  🔄 TODO | 2 | 2 |
-| 6. Utilitaires |  🔄 TODO | 2 | 2 |
-| 7. Multi-Surface |  🔄 TODO | 1 | 1 |
-| 8. Optimisations | 🔄 TODO | 0/2 | 0/2 |
-| 9. Features Avancées | 🔄 TODO | 0/3 | 0/3 |
-| 10. Shader Custom | 🔄 TODO | 0/2 | 0/2 |
-| 11. Documentation | 🔄 TODO | 0/3 | 0/3 |
-| 12. Extensions | 🔄 Future | 0/3 | 0/3 |
+| Phase                      | Statut    | Commits | Tests |
+|----------------------------|-----------|---------|-------|
+| 1. Foundation              | ✅ 4/4    | 4/4     | 4/4   |
+| 3. Mesh Warping (PRIORISÉ) | 🔄 0/3    | 0/3     | 0/3   |
+| 2. Calibration             | 🔄 0/3    | 0/3     | 0/3   |
+| 4. Homographie             | 🔄 0/3    | 0/3     | 0/3   |
+| 5. Configuration I/O       | 🔄 0/2    | 0/2     | 0/2   |
+| 6. Utilitaires             | 🔄 0/2    | 0/2     | 0/2   |
+| 7. Multi-Surface           | 🔄 0/1    | 0/1     | 0/1   |
+| 8-12.                      | 🔄 Future | 0/13    | 0/13  |
 
-**Total actuel** : 1 commits  | 6 tests 
+**Progression** : 4/31 étapes complètes (13%)
 
 ---
 
 ## Convention de Commits
-
 ```
 feat:     Nouvelle fonctionnalité
 fix:      Correction de bug
@@ -657,9 +442,32 @@ chore:    Maintenance, build
 
 ---
 
+## Leçons Apprises (Important !)
+
+### Header-only library
+- `RMAPI` doit être redéfini dans `RAYMAP_IMPLEMENTATION`
+- Structure : `#undef RMAPI` puis `#define RMAPI` (vide)
+- Sinon : erreurs de linkage "référence indéfinie"
+
+### RenderTexture
+- **Toujours flippée verticalement** en OpenGL
+- Solution : `source.height` négatif dans DrawTexturePro
+- Ou inverser les coordonnées V dans rlgl
+
+### DrawTexturePro vs rlgl
+- **DrawTexturePro** : Simple, fiable, mais RECTANGLES SEULEMENT
+- **rlgl** : Quads déformés possibles, mais nécessite `rlDrawRenderBatchActive()`
+- **DrawMesh** : Solution finale pour quads déformés
+
+### Ordre de développement
+- ✅ **Mesh warping AVANT calibration** : On voit la vraie déformation
+- ❌ Calibration avant mesh : On calibre un rectangle, frustrant
+
+---
+
 ## Checklist Release v1.0
 
-- [ ] Phase 1-7 complètes
+- [ ] Phases 1-7 complètes
 - [ ] Tous les tests passent
 - [ ] Documentation API complète
 - [ ] 3 exemples minimum
@@ -670,25 +478,15 @@ chore:    Maintenance, build
 
 ---
 
-## Checklist Release v2.0 (Future)
+## Notes Techniques
 
-- [ ] Shader custom fonctionnel
-- [ ] Edge blending
-- [ ] Auto-keystone
-- [ ] Support 3D
-- [ ] 90% test coverage
-- [ ] Multi-platform CI
-
----
-
-## Notes
-
-- **Tests visuels** : Beaucoup de tests nécessitent validation visuelle (warping, blending)
-- **Performance** : Target 60 FPS minimum sur hardware moyen
+- **Tests visuels** : Beaucoup de tests nécessitent validation visuelle
+- **Performance target** : 60 FPS minimum sur hardware moyen
 - **Compatibilité** : Tester sur Linux, macOS, Windows
 - **Raylib version** : Minimum 5.0, tester avec latest
+- **Mesh resolution** : 16x16 par défaut = bon compromis qualité/performance
 
 ---
 
-Généré le : 2024-12-30
-Version RayMap : 1.1.0
+Dernière mise à jour : 2024-12-31  
+Version RayMap : 0.3.0 (Phase 1 complète, Phase 3 en cours)

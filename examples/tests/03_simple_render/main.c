@@ -15,12 +15,12 @@ int main(void) {
     RM_Surface *surface = RM_CreateSurface(400, 300, RM_MAP_MESH);
     
     if (!surface) {
-        printf("❌ Échec création surface\n");
+        printf(" Échec création surface\n");
         CloseWindow();
         return 1;
     }
     
-    printf("✅ Surface créée (400x300)\n");
+    printf(" Surface créée (400x300)\n");
     
     // Boucle principale
     while (!WindowShouldClose()) {
@@ -52,6 +52,6 @@ int main(void) {
     RM_DestroySurface(surface);
     CloseWindow();
     
-    printf("✅ Test terminé\n");
+    printf(" Test terminé\n");
     return 0;
 }
