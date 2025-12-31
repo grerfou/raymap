@@ -99,6 +99,12 @@ RMAPI RM_Quad RM_GetQuad(const RM_Surface *surface);
 // Surface dimenssion
 RMAPI void RM_GetSurfaceSize(const RM_Surface *surface, int *width, int *height);
 
+// Maillage resolution
+RMAPI void RM_SetMeshResolution(RM_Surface *surface, int columns, int rows);
+
+// Resolution actuelle maillage
+RMAPI void RM_GetMeshResolution(const RM_Surface *surface, int *columns, int *rows);
+
 //----------------------------------------------------------------
 // Rendering
 //----------------------------------------------------------------
@@ -314,7 +320,6 @@ static void rm_UpdateMesh(RM_Surface *surface){
 //----------------------------------------------------------------
 
 
-
 RMAPI RM_Surface *RM_CreateSurface(int width, int height, RM_MapMode mode){
     // Alloue memoire pour la structure 
     RM_Surface *surface = (RM_Surface *)RMMALLOC(sizeof(RM_Surface));
@@ -401,6 +406,35 @@ RMAPI void RM_GetSurfaceSize(const RM_Surface *surface, int *width, int *height)
     if (height) *height = surface->height;
 }
 
+
+RMAPI void RM_SetMeshResolution(RM_Surface *surface, int columns, int rows){
+    if (!surface) return;
+
+    // Limite min/max
+    if (columns < 4) columns = 4;
+    if (columns > 64) columns = 64;
+    if (rows < 4) rows = 4;
+    if (rows > 64) rows = 64;
+
+    // nothing if not change
+    if (surface->meshColumns == columns && surface->meshRows == rows){
+        return;
+    }
+
+    // update res
+    surface->meshColumns = columns;
+    surface->meshRows = rows;
+
+    // Régénération
+    surface->meshNeedsUpdate = true;
+}
+
+RMAPI void RM_GetMeshResolution(const RM_Surface *surface, int *columns, int *rows){
+    if (!surface) return;
+
+    if (columns) *columns = surface->meshColumns;
+    if (rows) *rows = surface->meshRows;
+}
 
 //-----------------------------------------------------------------
 // Rendering

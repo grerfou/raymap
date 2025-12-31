@@ -10,7 +10,8 @@ LIBS = -lraylib -lm -lpthread -ldl
 #EXAMPLE = 02_surface_lifecycle
 #EXAMPLE = 03_simple_render
 #EXAMPLE = 04_quad_manipulation
-EXAMPLE = 05_mesh_subdivision
+#EXAMPLE = 05_mesh_subdivision
+EXAMPLE = 06_mesh_resolution
 
 
 
