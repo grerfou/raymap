@@ -76,7 +76,7 @@ int main(void) {
                 RM_SetMeshResolution(surface, 
                     presets[currentPreset].cols, 
                     presets[currentPreset].rows);
-                printf("📈 Résolution: %s\n", presets[currentPreset].name);
+                printf(" Résolution: %s\n", presets[currentPreset].name);
             }
         }
         
@@ -86,7 +86,7 @@ int main(void) {
                 RM_SetMeshResolution(surface, 
                     presets[currentPreset].cols, 
                     presets[currentPreset].rows);
-                printf("📉 Résolution: %s\n", presets[currentPreset].name);
+                printf(" Résolution: %s\n", presets[currentPreset].name);
             }
         }
         
@@ -97,7 +97,7 @@ int main(void) {
                 RM_SetMeshResolution(surface, 
                     presets[currentPreset].cols, 
                     presets[currentPreset].rows);
-                printf("🎯 Résolution: %s\n", presets[currentPreset].name);
+                printf(" Résolution: %s\n", presets[currentPreset].name);
             }
         }
         

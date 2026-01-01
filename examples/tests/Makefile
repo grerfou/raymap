@@ -11,7 +11,8 @@ LIBS = -lraylib -lm -lpthread -ldl
 #EXAMPLE = 03_simple_render
 #EXAMPLE = 04_quad_manipulation
 #EXAMPLE = 05_mesh_subdivision
-EXAMPLE = 06_mesh_resolution
+#EXAMPLE = 06_mesh_resolution
+EXAMPLE = 07_warp_modes
 
 
 
@@ -27,5 +28,11 @@ $(TARGET):
 
 clean:
 	rm -rf bin
+
+run : clean $(TARGET)
+	./$(TARGET)
+
+
+
 
 .PHONY : all clean run

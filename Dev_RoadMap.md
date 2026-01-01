@@ -6,9 +6,9 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 
 ---
 
-## Phase 1 : Foundation (MVP) ✅ EN COURS
+## Phase 1 : Foundation (MVP) ✅ COMPLETE
 
-### Étape 1.1 : Architecture de base ✅ COMPLÈTE
+### Étape 1.1 : Architecture de base ✅ COMPLETE
 **But** : Créer la structure header-only avec API publique/privée
 
 **Commit** : `feat: initial library structure with opaque types`
@@ -28,7 +28,7 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 
 ---
 
-### Étape 1.2 : Création et destruction de surfaces ✅ COMPLÈTE
+### Étape 1.2 : Création et destruction de surfaces ✅ COMPLETE
 **But** : Gestion mémoire et lifecycle des surfaces
 
 **Commit** : `feat: surface creation and destruction with RenderTexture`
@@ -53,7 +53,7 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 
 ---
 
-### Étape 1.3 : Rendu simple (quad basique) ✅ COMPLÈTE
+### Étape 1.3 : Rendu simple (quad basique) ✅ COMPLETE
 **But** : Afficher du contenu sur une surface non-déformée
 
 **Commit** : `feat: basic quad rendering with texture mapping`
@@ -77,7 +77,7 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 
 ---
 
-### Étape 1.4 : Gestion des quads ✅ COMPLÈTE
+### Étape 1.4 : Gestion des quads ✅ COMPLETE
 **But** : Permettre la déformation du quad (API seulement)
 
 **Commit** : `feat: quad manipulation (set/get corners)`
@@ -102,11 +102,11 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 
 ---
 
-## Phase 3 : Mesh Warping 🔄 PRIORISÉ
+## Phase 3 : Mesh Warping ✅ PRIORISÉ
 
 > **Décision** : Phase 3 déplacée avant Phase 2 (Calibration) pour résoudre le problème de déformation des quads. La calibration sera plus utile une fois le vrai warping fonctionnel.
 
-### Étape 3.1 : Subdivision bilinéaire 🔄 EN COURS
+### Étape 3.1 : Subdivision bilinéaire ✅ EN COMPLETE
 **But** : Remplacer le quad simple par un mesh subdivisé
 
 **Commit** : `feat: bilinear mesh subdivision for smooth warping`
@@ -132,7 +132,7 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 
 ---
 
-### Étape 3.2 : Résolution dynamique
+### Étape 3.2 : Résolution dynamique ✅ COMPLETE
 **But** : Permettre l'ajustement de la qualité du mesh
 
 **Commit** : `feat: dynamic mesh resolution adjustment`
@@ -144,15 +144,15 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 ```
 
 **Tests** :
-- [ ] Test: Augmenter résolution → meilleure qualité
-- [ ] Test: Diminuer résolution → meilleure performance
-- [ ] Test: Résolution min/max respectées (4x4 à 64x64)
+- [x] Test: Augmenter résolution → meilleure qualité
+- [x] Test: Diminuer résolution → meilleure performance
+- [x] Test: Résolution min/max respectées (4x4 à 64x64)
 
 **Fichier test** : `06_mesh_resolution/`
 
 ---
 
-### Étape 3.3 : Modes de warp
+### Étape 3.3 : Modes de warp ✅ COMPLETE
 **But** : Implémenter les deux modes (MESH et PERSPECTIVE)
 
 **Commit** : `feat: warp modes with mesh/perspective options`
@@ -164,9 +164,9 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 ```
 
 **Tests** :
-- [ ] Test: Mode MESH fonctionne
-- [ ] Test: Switch entre modes
-- [ ] Test: Performance acceptable (>60 FPS)
+- [x] Test: Mode MESH fonctionne
+- [x] Test: Switch entre modes
+- [x] Test: Performance acceptable (>60 FPS)
 
 **Fichier test** : `07_warp_modes/`
 
@@ -416,7 +416,7 @@ Les phases 8-12 restent inchangées :
 | Phase                      | Statut    | Commits | Tests |
 |----------------------------|-----------|---------|-------|
 | 1. Foundation              | ✅ 4/4    | 4/4     | 4/4   |
-| 3. Mesh Warping (PRIORISÉ) | 🔄 0/3    | 0/3     | 0/3   |
+| 3. Mesh Warping (PRIORISÉ) | ✅ 3/3    | 3/3     | 3/3   |
 | 2. Calibration             | 🔄 0/3    | 0/3     | 0/3   |
 | 4. Homographie             | 🔄 0/3    | 0/3     | 0/3   |
 | 5. Configuration I/O       | 🔄 0/2    | 0/2     | 0/2   |
@@ -424,7 +424,7 @@ Les phases 8-12 restent inchangées :
 | 7. Multi-Surface           | 🔄 0/1    | 0/1     | 0/1   |
 | 8-12.                      | 🔄 Future | 0/13    | 0/13  |
 
-**Progression** : 4/31 étapes complètes (13%)
+**Progression** : 7/31 étapes complètes (13%)
 
 ---
 

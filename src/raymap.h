@@ -118,6 +118,12 @@ RMAPI void RM_EndSurface(RM_Surface *surface);
 // Display Surface
 RMAPI void RM_DrawSurface(const RM_Surface *surface);
 
+// Map mode
+RMAPI void RM_SetMapMode(RM_Surface *surface, RM_MapMode mode);
+
+// current mode
+RMAPI RM_MapMode RM_GetMapMode(const RM_Surface *surface);
+
 #endif //RAYMAP_H
 
 
@@ -240,11 +246,23 @@ static void rm_GenerateBilinearMesh(RM_Surface *surface, int cols, int rows){
             float u = (float)x / (float)cols;
             float v = (float)y / (float)rows;
 
-            Vector2 pos = rm_BilinearInterpolation(
+            Vector2 pos;
+
+            if (surface->mode == RM_MAP_PERSPECTIVE){
+                // TODO : Utiliser rm_ApplyHomography() ici
+                pos = rm_BilinearInterpolation(
                     q.topLeft, q.topRight,
                     q.bottomLeft, q.bottomRight,
                     u, v
                     );
+            } else {
+                // Mesh mode : interpolation ici
+                pos = rm_BilinearInterpolation(
+                    q.topLeft, q.topRight,
+                    q.bottomLeft, q.bottomRight,
+                    u, v
+                    );
+            }
 
             // Vertex pos 
             mesh.vertices[vIdx * 3 + 0] = pos.x;
@@ -308,7 +326,39 @@ static void rm_UpdateMesh(RM_Surface *surface){
     rm_GenerateBilinearMesh(surface, surface->meshColumns, surface->meshRows);
 }
 
+RMAPI void RM_SetMapMode(RM_Surface *surface, RM_MapMode mode){
+    if (!surface) return;
 
+    // Rien si mode d'ont change
+    if (surface->mode == mode) return;
+
+    //change
+    surface->mode = mode;
+
+    #warning "Verifier Quel la res change Vraiment "
+
+    //Adjust res
+    if (mode == RM_MAP_MESH){
+        // Mode Mesh: Res medium
+        surface->meshColumns = 4;
+        surface->meshRows = 4;
+    } else if (mode == RM_MAP_PERSPECTIVE) {
+        //Mode Perspective : hight res
+        //L'homographie sera implémùenter en phase 4
+        //Pour l'instant utilise interpolation bilinéaire
+        surface->meshColumns = 32;
+        surface->meshRows = 32;
+    }
+
+    surface->meshNeedsUpdate = true;
+}
+
+
+RMAPI RM_MapMode RM_GetMapMode(const RM_Surface *surface){
+    if (!surface) return RM_MAP_MESH; //default
+        
+    return surface->mode;
+}
 
 //---------------------------------------------------------------
 // Implementation: Puiblic API
