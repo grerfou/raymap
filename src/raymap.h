@@ -124,6 +124,29 @@ RMAPI void RM_SetMapMode(RM_Surface *surface, RM_MapMode mode);
 // current mode
 RMAPI RM_MapMode RM_GetMapMode(const RM_Surface *surface);
 
+//----------------------------------------------------------------
+// Calibration
+//----------------------------------------------------------------
+
+// Create Calibration session
+RMAPI RM_Calibration *RM_CreateCalibration(RM_Surface *surface);
+
+// Destroy colibration session
+RMAPI void RM_DestroyCalibration(RM_Calibration *calibration);
+
+// Begin calibration
+RMAPI void RM_UpdateCalibration(RM_Calibration *calibration);
+
+// End Calibration 
+RMAPI void RM_EndCalibration(RM_Calibration *calibration);
+
+// Draw Calibration
+RMAPI void RM_DrawCalibration(const RM_Calibration *calibration);
+
+// Calibration Config
+RMAPI RM_CalibrationConfig *RM_GetCalibrationConfig(RM_Calibration *calibration);
+
+
 #endif //RAYMAP_H
 
 
@@ -360,6 +383,24 @@ RMAPI RM_MapMode RM_GetMapMode(const RM_Surface *surface){
     return surface->mode;
 }
 
+static RM_CalibrationConfig rm_GetDefaultCalibrationConfig(void){
+    RM_CalibrationConfig config;
+
+    config.showCorners = true;
+    config.showGrid = true;
+    config.showBorder = true;
+    
+    config.cornerColor = YELLOW;
+    config.selectedCornerColor = RED;
+    config.gridColor = ColorAlpha(WHITE, 0.3f);
+    config.borderColor = GREEN;
+
+    config.cornerRadius = 15.0f;
+    config.gridResolutionX = 8;
+    config.gridResolutionY = 8;
+
+    return config;
+}
 //---------------------------------------------------------------
 // Implementation: Puiblic API
 //---------------------------------------------------------------
@@ -526,6 +567,173 @@ RMAPI void RM_DrawSurface(const RM_Surface *surface){
     } else{
         printf(" PAS DE VERTICES !!!!!!!!!!!!!!!!\n");
     }
+}
+
+//-------------------------------------------------------------
+// Calibration 
+//-------------------------------------------------------------
+
+RMAPI RM_Calibration *RM_CreateCalibration(RM_Surface *surface){
+    if (!surface) return NULL;
+
+    RM_Calibration *calib = (RM_Calibration *)RMMALLOC(sizeof(RM_Calibration));
+    if (!calib) return NULL;
+
+    calib->surface = surface;
+    calib->config = rm_GetDefaultCalibrationConfig();
+    calib->activeCorner = -1;
+    calib->dragOffset = (Vector2){ 0, 0 };
+
+    return calib;
+}
+
+RMAPI void RM_DestroyCalibration(RM_Calibration *calibration){
+    if (!calibration) return;
+
+    RMFREE(calibration);
+}
+
+RMAPI void RM_BeginCalibration(RM_Calibration *calibration){
+    if (!calibration) return;
+
+    // Placeholder - 
+    // MODE special ? Desactiver normal render ? etc ..
+}
+
+RMAPI void RM_EndCalibration(RM_Calibration *calibration){
+    if (!calibration) return;
+
+    // Placeholder
+}
+
+RMAPI void RM_UpdateCalibration(RM_Calibration *calibration){
+    if (!calibration || !calibration->surface) return;
+
+    RM_Quad quad = RM_GetQuad(calibration->surface);
+    Vector2 mousePos = GetMousePosition();
+    float cornerRadius = calibration->config.cornerRadius;
+    
+    // Clic detection
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)){
+        // check coin
+        Vector2 corners[4] = {
+            quad.topLeft,
+            quad.topRight,
+            quad.bottomRight,
+            quad.bottomLeft,
+        };
+
+        calibration->activeCorner = -1;
+
+        for (int i = 0; i < 4; i++){
+            float dist = Vector2Distance(mousePos, corners[i]);
+
+            if (dist <= cornerRadius *1.5f) {
+                calibration->activeCorner = i;
+
+                // Calculer offset -> drag fluide
+                calibration->dragOffset = Vector2Subtract(corners[i], mousePos);
+                break;
+            }
+        }
+    }
+
+
+    // Drag
+    if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)){
+        // Calcul posision avec offset
+        Vector2 newPos = Vector2Add(mousePos, calibration->dragOffset);
+        // Update coin 
+        switch (calibration->activeCorner){
+            case 0: quad.topLeft = newPos; break;
+            case 1: quad.topRight = newPos; break;
+            case 2: quad.bottomRight = newPos; break;
+            case 3: quad.bottomLeft = newPos; break;
+        }
+
+        // apply new quad
+        RM_SetQuad(calibration->surface, quad);
+    }
+
+    // End drag
+    if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)){
+        calibration->activeCorner = -1; // deselectionner
+    }
+}
+
+RMAPI void RM_DrawCalibration(const RM_Calibration *calibration){
+    if (!calibration || !calibration->surface) return;
+
+    RM_Quad quad = RM_GetQuad(calibration->surface);
+    RM_CalibrationConfig cfg = calibration->config;
+
+    // Bordure quad
+    if (cfg.showBorder){
+        DrawLineEx(quad.topLeft, quad.topRight, 2.0f, cfg.borderColor);
+        DrawLineEx(quad.topRight, quad.bottomRight, 2.0f, cfg.borderColor);
+        DrawLineEx(quad.bottomRight, quad.bottomLeft, 2.0f, cfg.borderColor);
+        DrawLineEx(quad.bottomLeft, quad.topLeft, 2.0f, cfg.borderColor);
+
+    }
+
+    // Grid
+    if (cfg.showGrid){
+        // Vertical
+        for (int x = 1; x < cfg.gridResolutionX; x++){
+            float u = (float)x / (float)cfg.gridResolutionX;
+
+            // top
+            Vector2 top = Vector2Lerp(quad.topLeft, quad.topRight, u);
+            // bottom
+            Vector2 bottom = Vector2Lerp(quad.bottomLeft, quad.bottomRight, u);
+
+            DrawLineV(top, bottom, cfg.gridColor);
+        }
+
+        // Horizontal
+        for (int y; y < cfg.gridResolutionY; y++){
+            float v = (float)y / (float)cfg.gridResolutionY;
+
+            Vector2 left = Vector2Lerp(quad.topLeft, quad.bottomLeft, v);
+            Vector2 right = Vector2Lerp(quad.topRight, quad.bottomRight, v);
+
+            DrawLineV(left, right, cfg.gridColor);
+        }
+    }
+
+    // Cercle cliquable
+    if (cfg.showCorners) {
+        Vector2 corners[4] = {
+            quad.topLeft,
+            quad.topRight,
+            quad.bottomRight,
+            quad.bottomLeft
+        };
+
+        for (int i = 0; i < 4; i++){
+            Color cornerColor = (i == calibration->activeCorner)
+                ? cfg.selectedCornerColor
+                : cfg.cornerColor;
+
+            // Cercle
+            DrawCircleV(corners[i], cfg.cornerRadius, cornerColor);
+
+            // Bordure
+            DrawCircleLines((int)corners[i].x, (int)corners[i].y, cfg.cornerRadius, WHITE);
+
+            // Num coin
+            DrawText(TextFormat("%d", i),
+                    (int)corners[i].x - 5,
+                    (int)corners[i].y - 10,
+                    20, BLACK);
+        }
+    }
+}
+
+RMAPI RM_CalibrationConfig *RM_GetCalibrationConfig(RM_Calibration *calibration){
+    if (!calibration) return NULL;
+
+    return &calibration->config;
 }
 
 #endif //RAYMAP_IMPLEMENTATION

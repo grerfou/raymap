@@ -172,7 +172,7 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 
 ---
 
-## Phase 2 : Calibration Interactive 🔄 APRÈS MESH
+## Phase 2 : Calibration Interactive ✅ APRÈS MESH
 
 > **Décision** : Phase 2 déplacée après Phase 3. La calibration est plus utile une fois qu'on peut voir la vraie déformation.
 
@@ -187,9 +187,9 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 ```
 
 **Tests** :
-- [ ] Test: Cliquer sur coin → sélection
-- [ ] Test: Glisser coin → déplacement
-- [ ] Test: Relâcher souris → fin sélection
+- [x] Test: Cliquer sur coin → sélection
+- [x] Test: Glisser coin → déplacement
+- [x] Test: Relâcher souris → fin sélection
 
 **Fichier test** : `08_calibration_input/`
 
