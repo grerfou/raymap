@@ -155,6 +155,14 @@ RMAPI void RM_DrawCalibrationGrid(const RM_Calibration *calibration);
 // Calibration Config
 RMAPI RM_CalibrationConfig *RM_GetCalibrationConfig(RM_Calibration *calibration);
 
+// Reset quad
+RMAPI void RM_ResetQuad(RM_Surface *surface, int screenWidth, int screenHeight);
+
+// Active corner 
+RMAPI int RM_GetActiveCorner(const RM_Calibration *calibration);
+
+// Drag corner
+RMAPI bool RM_IsCalibrate(const RM_Calibration *calibration);
 
 
 #endif //RAYMAP_H
@@ -758,6 +766,37 @@ RMAPI void RM_DrawCalibrationBorder(const RM_Calibration *calibration){
     DrawLineEx(quad.bottomRight, quad.bottomLeft, 2.0f, borderColor);
     DrawLineEx(quad.bottomLeft, quad.topLeft, 2.0f, borderColor);
 
+}
+
+RMAPI void RM_ResetQuad(RM_Surface *surface, int screenWidth, int screenHeight){
+    if (!surface) return;
+
+    int surfaceWidth = surface->width;
+    int surfaceHeight = surface->height;
+
+    int x = (screenWidth - surfaceWidth) / 2;
+    int y = (screenHeight - surfaceHeight) / 2;
+
+    RM_Quad CenterQuad = {
+        { (float)x, (float)y },
+        { (float)(x + surfaceWidth), (float)y },
+        { (float)x, (float)(y + surfaceHeight) },
+        { (float)(x + surfaceWidth), (float)(y + surfaceHeight) }
+    };
+
+    RM_SetQuad(surface, CenterQuad);
+}
+
+RMAPI int RM_GetActiveCorner(const RM_Calibration *calibration){
+    if (!calibration) return -1;
+
+    return calibration->activeCorner;
+} 
+
+RMAPI bool RM_IsCalibrate(const RM_Calibration *calibration){
+    if (!calibration) return false;
+
+    return (calibration->activeCorner >= 0 && IsMouseButtonDown(MOUSE_BUTTON_LEFT));
 }
 
 

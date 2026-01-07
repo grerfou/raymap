@@ -216,7 +216,7 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 
 ---
 
-### Étape 2.3 : Reset et utilitaires
+### Étape 2.3 : Reset et utilitaires ✅ COMPLETE
 **But** : Outils de calibration pratiques
 
 **Commit** : `feat: calibration utilities (reset, active corner query)`
@@ -227,9 +227,9 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 ```
 
 **Tests** :
-- [ ] Test: Reset → quad revient à rectangle centré
-- [ ] Test: GetActiveCorner retourne bon index
-- [ ] Test: IsCalibrating correct pendant drag
+- [x] Test: Reset → quad revient à rectangle centré
+- [x] Test: GetActiveCorner retourne bon index
+- [x] Test: IsCalibrating correct pendant drag
 
 **Fichier test** : `10_calibration_utils/`
 
@@ -417,14 +417,14 @@ Les phases 8-12 restent inchangées :
 |----------------------------|-----------|---------|-------|
 | 1. Foundation              | ✅ 4/4    | 4/4     | 4/4   |
 | 3. Mesh Warping (PRIORISÉ) | ✅ 3/3    | 3/3     | 3/3   |
-| 2. Calibration             | 🔄 0/3    | 0/3     | 0/3   |
+| 2. Calibration             | ✅ 3/3    | 3/3     | 3/3   |
 | 4. Homographie             | 🔄 0/3    | 0/3     | 0/3   |
 | 5. Configuration I/O       | 🔄 0/2    | 0/2     | 0/2   |
 | 6. Utilitaires             | 🔄 0/2    | 0/2     | 0/2   |
 | 7. Multi-Surface           | 🔄 0/1    | 0/1     | 0/1   |
 | 8-12.                      | 🔄 Future | 0/13    | 0/13  |
 
-**Progression** : 7/31 étapes complètes (13%)
+**Progression** : 10/31 étapes complètes (13%)
 
 ---
 
