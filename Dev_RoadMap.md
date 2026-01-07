@@ -176,7 +176,7 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 
 > **Décision** : Phase 2 déplacée après Phase 3. La calibration est plus utile une fois qu'on peut voir la vraie déformation.
 
-### Étape 2.1 : Calibration basique
+### Étape 2.1 : Calibration basique ✅ COMPLETE
 **But** : Permettre le déplacement des coins à la souris
 
 **Commit** : `feat: interactive calibration with mouse drag`
@@ -195,7 +195,7 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 
 ---
 
-### Étape 2.2 : UI de calibration
+### Étape 2.2 : UI de calibration ✅ COMPLETE
 **But** : Feedback visuel pendant la calibration
 
 **Commit** : `feat: calibration UI with corners, borders, and grid`
@@ -207,10 +207,10 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 ```
 
 **Tests** :
-- [ ] Test: Coins visibles et cliquables
-- [ ] Test: Grille s'affiche correctement
-- [ ] Test: Bordure suit le quad
-- [ ] Test: Corner actif change de couleur
+- [x] Test: Coins visibles et cliquables
+- [x] Test: Grille s'affiche correctement
+- [x] Test: Bordure suit le quad
+- [x] Test: Corner actif change de couleur
 
 **Fichier test** : `09_calibration_ui/`
 

@@ -13,7 +13,8 @@ LIBS = -lraylib -lm -lpthread -ldl
 #EXAMPLE = 05_mesh_subdivision
 #EXAMPLE = 06_mesh_resolution
 #EXAMPLE = 07_warp_modes
-EXAMPLE = 08_calibration_input
+#EXAMPLE = 08_calibration_input
+EXAMPLE = 09_calibration_ui
 
 
 

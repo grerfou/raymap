@@ -140,11 +140,21 @@ RMAPI void RM_UpdateCalibration(RM_Calibration *calibration);
 // End Calibration 
 RMAPI void RM_EndCalibration(RM_Calibration *calibration);
 
-// Draw Calibration
+// Draw complete  Calibration
 RMAPI void RM_DrawCalibration(const RM_Calibration *calibration);
+
+// Draw only corner
+RMAPI void RM_DrawCalibrationCorners(const RM_Calibration *calibration);
+
+// Draw only quad border
+RMAPI void RM_DrawCalibrationBorder(const RM_Calibration *calibration);
+
+// Draw only grid
+RMAPI void RM_DrawCalibrationGrid(const RM_Calibration *calibration);
 
 // Calibration Config
 RMAPI RM_CalibrationConfig *RM_GetCalibrationConfig(RM_Calibration *calibration);
+
 
 
 #endif //RAYMAP_H
@@ -391,9 +401,9 @@ static RM_CalibrationConfig rm_GetDefaultCalibrationConfig(void){
     config.showBorder = true;
     
     config.cornerColor = YELLOW;
-    config.selectedCornerColor = RED;
+    config.selectedCornerColor = GREEN;
     config.gridColor = ColorAlpha(WHITE, 0.3f);
-    config.borderColor = GREEN;
+    config.borderColor = RED;
 
     config.cornerRadius = 15.0f;
     config.gridResolutionX = 8;
@@ -664,71 +674,92 @@ RMAPI void RM_UpdateCalibration(RM_Calibration *calibration){
 RMAPI void RM_DrawCalibration(const RM_Calibration *calibration){
     if (!calibration || !calibration->surface) return;
 
+    RM_DrawCalibrationBorder(calibration);
+    RM_DrawCalibrationGrid(calibration); 
+    RM_DrawCalibrationCorners(calibration);
+}
+
+RMAPI void RM_DrawCalibrationCorners(const RM_Calibration *calibration){
+    if (!calibration || !calibration->surface) return;
+    if (!calibration->config.showCorners) return;
+
     RM_Quad quad = RM_GetQuad(calibration->surface);
     RM_CalibrationConfig cfg = calibration->config;
 
-    // Bordure quad
-    if (cfg.showBorder){
-        DrawLineEx(quad.topLeft, quad.topRight, 2.0f, cfg.borderColor);
-        DrawLineEx(quad.topRight, quad.bottomRight, 2.0f, cfg.borderColor);
-        DrawLineEx(quad.bottomRight, quad.bottomLeft, 2.0f, cfg.borderColor);
-        DrawLineEx(quad.bottomLeft, quad.topLeft, 2.0f, cfg.borderColor);
+    Vector2 corners[4] = {
+        quad.topLeft,
+        quad.topRight,
+        quad.bottomRight,
+        quad.bottomLeft
+    };
 
+    for (int i = 0; i < 4; i++){
+
+        Color cornerColor = (i == calibration->activeCorner)
+            ? cfg.selectedCornerColor
+            : cfg.cornerColor;
+
+        // cercle
+        DrawCircleV(corners[i], cfg.cornerRadius, cornerColor);
+        
+        // Bordure 
+        DrawCircleLines((int)corners[i].x, (int)corners[i].y, cfg.cornerRadius, WHITE);
+            
+        // num Coin
+        DrawText(TextFormat("%d", i),
+                (int)corners[i].x - 5,
+                (int)corners[i].y -10,
+                20, BLACK);
+   }
+}
+
+RMAPI void RM_DrawCalibrationGrid(const RM_Calibration *calibration){
+    if (!calibration || !calibration->surface) return;
+    if (!calibration->config.showGrid) return;
+
+    RM_Quad quad = RM_GetQuad(calibration->surface);
+    RM_CalibrationConfig cfg = calibration->config;
+
+    // Horizontal
+    for (int x = 0; x < cfg.gridResolutionX; x++){
+        float u = (float)x / (float)cfg.gridResolutionX;
+
+        // Vector top
+        Vector2 top = Vector2Lerp(quad.topLeft, quad.topRight, u);
+
+        // Vector bottom
+        Vector2 bottom = Vector2Lerp(quad.bottomLeft, quad.bottomRight, u);
+
+        DrawLineV(top, bottom, cfg.gridColor);
     }
 
-    // Grid
-    if (cfg.showGrid){
-        // Vertical
-        for (int x = 1; x < cfg.gridResolutionX; x++){
-            float u = (float)x / (float)cfg.gridResolutionX;
+    // Vertical
+    for (int y = 0; y < cfg.gridResolutionY; y++){
+        float v = (float)y/ (float)cfg.gridResolutionY;
 
-            // top
-            Vector2 top = Vector2Lerp(quad.topLeft, quad.topRight, u);
-            // bottom
-            Vector2 bottom = Vector2Lerp(quad.bottomLeft, quad.bottomRight, u);
+        // Vector Right
+        Vector2 right = Vector2Lerp(quad.topRight, quad.bottomRight, v);
+        // Vector Left
+        Vector2 left = Vector2Lerp(quad.topLeft, quad.bottomLeft, v);
 
-            DrawLineV(top, bottom, cfg.gridColor);
-        }
-
-        // Horizontal
-        for (int y; y < cfg.gridResolutionY; y++){
-            float v = (float)y / (float)cfg.gridResolutionY;
-
-            Vector2 left = Vector2Lerp(quad.topLeft, quad.bottomLeft, v);
-            Vector2 right = Vector2Lerp(quad.topRight, quad.bottomRight, v);
-
-            DrawLineV(left, right, cfg.gridColor);
-        }
-    }
-
-    // Cercle cliquable
-    if (cfg.showCorners) {
-        Vector2 corners[4] = {
-            quad.topLeft,
-            quad.topRight,
-            quad.bottomRight,
-            quad.bottomLeft
-        };
-
-        for (int i = 0; i < 4; i++){
-            Color cornerColor = (i == calibration->activeCorner)
-                ? cfg.selectedCornerColor
-                : cfg.cornerColor;
-
-            // Cercle
-            DrawCircleV(corners[i], cfg.cornerRadius, cornerColor);
-
-            // Bordure
-            DrawCircleLines((int)corners[i].x, (int)corners[i].y, cfg.cornerRadius, WHITE);
-
-            // Num coin
-            DrawText(TextFormat("%d", i),
-                    (int)corners[i].x - 5,
-                    (int)corners[i].y - 10,
-                    20, BLACK);
-        }
+        DrawLineV(left, right, cfg.gridColor);
     }
 }
+
+RMAPI void RM_DrawCalibrationBorder(const RM_Calibration *calibration){
+    if (!calibration || !calibration->surface) return;
+    if (!calibration->config.showBorder) return;
+
+    RM_Quad quad = RM_GetQuad(calibration->surface);
+    Color borderColor = calibration->config.borderColor;
+
+    DrawLineEx(quad.topLeft, quad.topRight, 2.0f, borderColor);
+    DrawLineEx(quad.topRight, quad.bottomRight, 2.0f, borderColor);
+    DrawLineEx(quad.bottomRight, quad.bottomLeft, 2.0f, borderColor);
+    DrawLineEx(quad.bottomLeft, quad.topLeft, 2.0f, borderColor);
+
+}
+
 
 RMAPI RM_CalibrationConfig *RM_GetCalibrationConfig(RM_Calibration *calibration){
     if (!calibration) return NULL;
