@@ -15,7 +15,8 @@ LIBS = -lraylib -lm -lpthread -ldl
 #EXAMPLE = 07_warp_modes
 #EXAMPLE = 08_calibration_input
 #EXAMPLE = 09_calibration_ui
-EXAMPLE = 10_calibration_utils
+#EXAMPLE = 10_calibration_utils
+EXAMPLE = 11_homography_math
 
 
 

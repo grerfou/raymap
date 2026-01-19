@@ -235,9 +235,9 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 
 ---
 
-## Phase 4 : Homographie Perspective 🔄 TODO
+## Phase 4 : Homographie Perspective
 
-### Étape 4.1 : Mathématiques homographie
+### Étape 4.1 : Mathématiques homographie ✅ COMPLETE
 **But** : Calculer la matrice 3x3 de transformation projective
 
 **Commit** : `feat: homography matrix computation (DLT algorithm)`
@@ -249,10 +249,10 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 ```
 
 **Tests** :
-- [ ] Test: Quad rectangle → matrice identité
-- [ ] Test: Quad déformé → matrice correcte
-- [ ] Test: ApplyHomography sur points connus
-- [ ] Test: Inverse de matrice correcte
+- [x] Test: Quad rectangle → matrice identité
+- [x] Test: Quad déformé → matrice correcte
+- [x] Test: ApplyHomography sur points connus
+- [x] Test: Inverse de matrice correcte
 
 **Fichier test** : `11_homography_math/`
 
@@ -269,7 +269,7 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 ```
 
 **Tests** :
-- [ ] Test: Mode PERSPECTIVE fonctionne
+- [ ] Test: Mode PERSPECTIVE foncti currently used, butonne
 - [ ] Test: Lignes droites restent droites
 - [ ] Test: Comparaison MESH vs PERSPECTIVE
 - [ ] Test: Points mappés correctement
@@ -418,13 +418,13 @@ Les phases 8-12 restent inchangées :
 | 1. Foundation              | ✅ 4/4    | 4/4     | 4/4   |
 | 3. Mesh Warping (PRIORISÉ) | ✅ 3/3    | 3/3     | 3/3   |
 | 2. Calibration             | ✅ 3/3    | 3/3     | 3/3   |
-| 4. Homographie             | 🔄 0/3    | 0/3     | 0/3   |
+| 4. Homographie             | 🔄 1/3    | 1/3     | 1/3   |
 | 5. Configuration I/O       | 🔄 0/2    | 0/2     | 0/2   |
 | 6. Utilitaires             | 🔄 0/2    | 0/2     | 0/2   |
 | 7. Multi-Surface           | 🔄 0/1    | 0/1     | 0/1   |
 | 8-12.                      | 🔄 Future | 0/13    | 0/13  |
 
-**Progression** : 10/31 étapes complètes (13%)
+**Progression** : 11/31 étapes complètes (13%)
 
 ---
 
@@ -439,29 +439,6 @@ docs:     Documentation
 style:    Formatage, style
 chore:    Maintenance, build
 ```
-
----
-
-## Leçons Apprises (Important !)
-
-### Header-only library
-- `RMAPI` doit être redéfini dans `RAYMAP_IMPLEMENTATION`
-- Structure : `#undef RMAPI` puis `#define RMAPI` (vide)
-- Sinon : erreurs de linkage "référence indéfinie"
-
-### RenderTexture
-- **Toujours flippée verticalement** en OpenGL
-- Solution : `source.height` négatif dans DrawTexturePro
-- Ou inverser les coordonnées V dans rlgl
-
-### DrawTexturePro vs rlgl
-- **DrawTexturePro** : Simple, fiable, mais RECTANGLES SEULEMENT
-- **rlgl** : Quads déformés possibles, mais nécessite `rlDrawRenderBatchActive()`
-- **DrawMesh** : Solution finale pour quads déformés
-
-### Ordre de développement
-- ✅ **Mesh warping AVANT calibration** : On voit la vraie déformation
-- ❌ Calibration avant mesh : On calibre un rectangle, frustrant
 
 ---
 

@@ -9,6 +9,21 @@
 *
 *   FEATURES:
 *
+*   MATHEMATICAL REFERENCES:
+*       - Homography computation based on Direct Linear Transform (DLT)
+*         Reference: OpenCV cv::findHomography() implementation
+*         https://github.com/opencv/opencv/blob/master/modules/calib3d/src/fundam.cpp
+*
+*       - Matrix operations inspired by:
+*         * mathc by Ferreyd: https://github.com/felselva/mathc
+*         * cglm - OpenGL Mathematics (glm) for C: https://github.com/recp/cglm
+*
+*       - Theoretical foundation:
+*         "Multiple View Geometry in Computer Vision"
+*         by Richard Hartley and Andrew Zisserman
+*         Chapter 4: Estimation - 2D Homographies
+*
+*
 *   DEPENDENCIES:
 *       - raylib 5.0+ (https://www.raylib.com)
 *
@@ -212,6 +227,10 @@ RMAPI bool RM_IsCalibrate(const RM_Calibration *calibration);
 *
 ************************************************************************************/
 
+// Matrice 3x3 homographie 
+typedef struct {
+    float m[3][3];
+} Matrix3x3;
 
 struct RM_Surface {
     int width;
@@ -223,6 +242,8 @@ struct RM_Surface {
     int meshColumns;
     int meshRows;
     bool meshNeedsUpdate;
+    Matrix3x3 homography;
+    bool homographyNeedsUpdate;
 };
 
 struct RM_Calibration {
@@ -236,6 +257,285 @@ struct RM_Calibration {
 //---------------------------------------------------------------
 // Implementation : Internal Functions
 //---------------------------------------------------------------
+
+// 3x3 matrix opération
+// Ref : mathc (ferreyd), cglm, standard linear algebra
+
+// identity matrix 
+static Matrix3x3 rm_Matrix3x3Identity(void){
+    Matrix3x3 result = {0};        
+    result.m[0][0] = 1.0f;
+    result.m[1][1] = 1.0f;
+    result.m[2][2] = 1.0f;
+    return result;
+}
+
+__attribute__((unused))
+static Matrix3x3 rm_Matrix3x3Multiply(Matrix3x3 a, Matrix3x3 b){
+    Matrix3x3 result = {0};
+
+    for (int i = 0; i < 3; i ++){
+        for (int j = 0; j < 3; j++){
+            result.m[i][j] = 0;
+            for (int k = 0; k < 3; k++){
+                result.m[i][j] += a.m[i][k] * b.m[k][j];
+            }
+        }
+    }
+
+    return result;
+}
+
+
+// Calcul determinant 3x3 matrix
+// Ref : Sarrus rule for 3X3 determinants
+static float rm_Matrix3x3Determinant(Matrix3x3 m){
+    return m.m[0][0] * (m.m[1][1] * m.m[2][2] - m.m[1][2] * m.m[2][1])
+        - m.m[0][1] * (m.m[1][0] * m.m[2][2] - m.m[1][2] * m.m[2][0])
+        + m.m[0][2] * (m.m[1][0] * m.m[2][1] - m.m[1][1] * m.m[2][0]);
+}
+
+/*
+
+[a b c]
+[d e f]
+[g h i]
+
+a = m.m[0][0]
+b = m.m[0][1]
+c = m.m[0][2]
+
+d = m.m[1][0]
+e = m.m[1][1]
+f = m.m[1][2]
+
+g = m.m[2][0]
+h = m.m[2][1]
+i = m.m[2][2]
+
+*/
+
+
+// Calcul inverse 3x3 matrix using adjugate method
+// Ref : Standard Linear algebra, similar to mathc mat3_inverse()
+__attribute__((unused))
+static Matrix3x3 rm_Matrix3x3Inverse(Matrix3x3 m){
+    Matrix3x3 result = {0};
+    // 0 0 0
+    // 0 0 0
+    // 0 0 0
+    
+    // if inverse existe
+    float det = rm_Matrix3x3Determinant(m);
+
+    if (fabsf(det) < 0.000001f) {
+        printf("Matrix inverse, return identity");
+        return rm_Matrix3x3Identity();
+    }
+
+    float invDet = 1.0f / det;
+
+    // Calulcul cofacteur et transposer
+    result.m[0][0] = (m.m[1][1] * m.m[2][2] - m.m[1][2] * m.m[2][1]) * invDet;
+    result.m[0][1] = (m.m[0][2] * m.m[2][1] - m.m[0][1] * m.m[2][2]) * invDet;
+    result.m[0][2] = (m.m[0][1] * m.m[1][2] - m.m[0][2] * m.m[1][1]) * invDet;
+
+    result.m[1][0] = (m.m[1][2] * m.m[2][0] - m.m[1][0] * m.m[2][2]) * invDet;
+    result.m[1][1] = (m.m[0][0] * m.m[2][2] - m.m[0][2] * m.m[2][0]) * invDet;
+    result.m[1][2] = (m.m[0][2] * m.m[1][0] - m.m[0][0] * m.m[1][2]) * invDet;
+
+
+    result.m[2][0] = (m.m[1][0] * m.m[2][1] - m.m[1][1] * m.m[2][0]) * invDet;
+    result.m[2][1] = (m.m[0][1] * m.m[2][0] - m.m[0][0] * m.m[2][1]) * invDet;
+    result.m[2][2] = (m.m[0][0] * m.m[1][1] - m.m[0][1] * m.m[1][0]) * invDet;
+
+    return result;
+}
+
+
+static int rm_GaussSolve8x8(float A[8][8], float b[8], float x[8]){
+    int i, j, k;
+    float factor, temp, max_val;
+    int max_row;
+
+    // Copie a et b pour ne pas modifier les originaux
+    float A_copy[8][8];
+    float b_copy[8];
+
+    for (i = 0; i < 8; i++){
+        for (j = 0; j < 8; j++){
+            A_copy[i][j] = A[i][j];
+        }
+        b_copy[i] = b[i];
+    }
+
+    // Triangulation
+    for (k = 0; k < 7; k++){
+
+        // Trouver le plus grand element dans k
+        max_val = fabsf(A_copy[k][k]);
+        max_row = k;
+
+
+        for (i = k + 1; i < 8; i++){
+            if (fabsf(A_copy[i][k]) > max_val){
+                max_val = fabsf(A_copy[i][k]);
+                max_row = i;
+            }
+        }
+
+        // verifie singularité
+        if (max_val < 1e-10f){
+            return -1; // Matrix ginguliere
+        }
+
+        // Changer ligne si necessessaire 
+        if (max_row != k){
+            for (j =0; j < 8; j++){
+                temp = A_copy[k][j];
+                A_copy[k][j] = A_copy[max_row][j];
+                A_copy[max_row][j] = temp;
+            }
+            temp = b_copy[k];
+            b_copy[k] = b_copy[max_row];
+            b_copy[max_row] = temp;
+        }
+
+        // Elimination -> Remmetre a zero elements sous pivot
+        for (i = k + 1; i < 8; i++){
+            factor = A_copy[i][k] / A_copy[k][k];
+
+            for (j = k; j < 8; j++){
+                A_copy[i][j] -= factor * A_copy[k][j];
+            }
+            b_copy[i] -= factor * b_copy[k];
+        }
+
+    }
+
+    // Verifier le dernier pivot 
+    if (fabsf(A_copy[7][7]) < 1e-10f){
+        return -1;
+    }
+
+
+    // Substitution
+    for (i = 7; i >= 0; i--){
+        x[i] = b_copy[i];
+
+        for (j = i + 1; j < 8; j++){
+            x[i] -= A_copy[i][j] * x[j];
+        }
+
+        x[i] /= A_copy[i][i];
+    }
+
+    return 0;
+}
+
+
+
+// Calcul Matrice a partir de 4 points
+// Utilise algo transformation linéaire direct (dlt)
+static Matrix3x3 rm_ComputeHomography(RM_Quad dest){
+    // Point de bases
+    Vector2 src[4] = {
+        {0, 0}, // top left
+        {1, 0}, // top right
+        {0, 1}, // bottom left
+        {1, 1}, // bottom right
+    };
+
+    // Destination point
+    Vector2 dst[4] = {
+        dest.topLeft,
+        dest.topRight,
+        dest.bottomLeft,
+        dest.bottomRight
+    };
+
+    // systeme d'équation
+    // Pour chaque correspondance on obtien 2 equations
+
+    float A[8][9];
+
+    for (int i = 0; i < 4; i++){
+        float x = src[i].x;
+        float y = src[i].y;
+        float u = dst[i].x;
+        float v = dst[i].y;
+
+        // Premiere equation 
+        A[i*2][0] = x;
+        A[i*2][1] = y;
+        A[i*2][2] = 1;
+        A[i*2][3] = 0;
+        A[i*2][4] = 0;
+        A[i*2][5] = 0;
+        A[i*2][6] = -u * x;
+        A[i*2][7] = -u * y;
+        A[i*2][8] = -u;
+
+        // Seconde equation
+        A[i*2+1][0] = 0;
+        A[i*2+1][1] = 0;
+        A[i*2+1][2] = 0;
+        A[i*2+1][3] = x;
+        A[i*2+1][4] = y;
+        A[i*2+1][5] = 1;
+        A[i*2+1][6] = -v * x;
+        A[i*2+1][7] = -v * y;
+        A[i*2+1][8] = -v;
+
+    }
+
+    // Extraction 8x8
+    float A_square[8][8];
+    float b[8];
+
+    for (int i = 0; i < 8; i++){
+        for (int j = 0; j < 8; j++){
+            A_square[i][j] = A[i][j];
+        }
+        b[i] = -A[i][8]; // bouger la derniere colonne
+    }
+
+    float h[9];
+
+    if (rm_GaussSolve8x8(A_square, b, h) != 0 ){
+        // echec resolution -> renvoy la matrice 
+         printf(" Homography computation failed, returning identity\n");
+         return rm_Matrix3x3Identity();
+    }
+
+    h[8] = 1.0f; // normalisation
+    
+    // Construire 3x3 homography
+    Matrix3x3 H;
+    H.m[0][0] = h[0]; H.m[0][1] = h[1]; H.m[0][2] = h[2];
+    H.m[1][0] = h[3]; H.m[1][1] = h[4]; H.m[1][2] = h[5];
+    H.m[2][0] = h[6]; H.m[2][1] = h[7]; H.m[2][2] = h[8];
+
+    return H;
+}
+
+static Vector2 rm_ApplyHomography(Matrix3x3 H, float u, float v){
+    // Application de l'homographie 
+    float x = H.m[0][0] * u + H.m[0][1] * v + H.m[0][2];
+    float y = H.m[1][0] * u + H.m[1][1] * v + H.m[1][2];
+    float w = H.m[2][0] * u + H.m[2][1] * v + H.m[2][2];
+
+    if (fabsf(w) > 0.000001f){
+        x /= w;
+        y /= w;
+    }
+
+    return (Vector2){x, y};
+}
+
+
+
+// Bilinear 
 
 static Vector2 rm_BilinearInterpolation(Vector2 p00, Vector2 p10, Vector2 p01, Vector2 p11, float u, float v){
 
@@ -280,6 +580,16 @@ static void rm_GenerateBilinearMesh(RM_Surface *surface, int cols, int rows){
 
     RM_Quad q = surface->quad;
 
+
+    if (surface->mode == RM_MAP_PERSPECTIVE && surface->homographyNeedsUpdate){
+        surface->homography = rm_ComputeHomography(surface->quad);
+        surface->homographyNeedsUpdate = false;
+        printf("Homographie calculée (mode PERSPECTIVE)\n");
+    }
+
+
+
+
     // Vertice
     int vIdx = 0;
     for (int y= 0; y <= rows; y++){
@@ -290,12 +600,8 @@ static void rm_GenerateBilinearMesh(RM_Surface *surface, int cols, int rows){
             Vector2 pos;
 
             if (surface->mode == RM_MAP_PERSPECTIVE){
-                // TODO : Utiliser rm_ApplyHomography() ici
-                pos = rm_BilinearInterpolation(
-                    q.topLeft, q.topRight,
-                    q.bottomLeft, q.bottomRight,
-                    u, v
-                    );
+                // persepctive mode utilise homographie
+                pos = rm_ApplyHomography(surface->homography, u, v);
             } else {
                 // Mesh mode : interpolation ici
                 pos = rm_BilinearInterpolation(
@@ -376,7 +682,7 @@ RMAPI void RM_SetMapMode(RM_Surface *surface, RM_MapMode mode){
     //change
     surface->mode = mode;
 
-    #warning "Verifier Quel la res change Vraiment "
+    //#warning "Verifier Quel la res change Vraiment "
 
     //Adjust res
     if (mode == RM_MAP_MESH){
@@ -384,14 +690,12 @@ RMAPI void RM_SetMapMode(RM_Surface *surface, RM_MapMode mode){
         surface->meshColumns = 4;
         surface->meshRows = 4;
     } else if (mode == RM_MAP_PERSPECTIVE) {
-        //Mode Perspective : hight res
-        //L'homographie sera implémùenter en phase 4
-        //Pour l'instant utilise interpolation bilinéaire
         surface->meshColumns = 32;
         surface->meshRows = 32;
     }
 
     surface->meshNeedsUpdate = true;
+    surface->homographyNeedsUpdate = true;
 }
 
 
@@ -454,6 +758,9 @@ RMAPI RM_Surface *RM_CreateSurface(int width, int height, RM_MapMode mode){
     surface->meshColumns = 16; // resolution default
     surface->meshRows = 16;
     surface->meshNeedsUpdate = true; 
+    
+    surface->homography = rm_Matrix3x3Identity();
+    surface->homographyNeedsUpdate = true;
 
     rm_UpdateMesh(surface);
 
@@ -484,6 +791,7 @@ RMAPI void RM_SetQuad(RM_Surface *surface, RM_Quad quad){
 
     surface->quad = quad;
     surface->meshNeedsUpdate = true;
+    surface->homographyNeedsUpdate = true;
     
     bool isDegenerate = (
         quad.topLeft.x == quad.topRight.x &&
