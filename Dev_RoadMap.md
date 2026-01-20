@@ -360,7 +360,7 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 
 ---
 
-### Étape 6.2 : Mapping de points
+### Étape 6.2 : Mapping de points ✅ COMPLETE
 **But** : Transformer coordonnées entre espaces
 
 **Commit** : `feat: point mapping between texture and screen space`
@@ -370,9 +370,9 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 ```
 
 **Tests** :
-- [ ] Test: Round-trip map→unmap
-- [ ] Test: Coins du quad correctement mappés
-- [ ] Test: Centre du quad
+- [x] Test: Round-trip map→unmap
+- [x] Test: Coins du quad correctement mappés
+- [x] Test: Centre du quad
 
 **Fichier test** : `17_point_mapping/`
 
@@ -420,11 +420,11 @@ Les phases 8-12 restent inchangées :
 | 2. Calibration             | ✅ 3/3    | 3/3     | 3/3   |
 | 4. Homographie             | ✅ 3/3    | 3/3     | 3/3   |
 | 5. Configuration I/O       | ✅ 2/2    | 2/2     | 2/2   |
-| 6. Utilitaires             | 🔄 1/2    | 1/2     | 1/2   |
+| 6. Utilitaires             | ✅ 2/2    | 2/2     | 2/2   |
 | 7. Multi-Surface           | 🔄 0/1    | 0/1     | 0/1   |
 | 8-12.                      | 🔄 Future | 0/13    | 0/13  |
 
-**Progression** : 16/31 étapes complètes (13%)
+**Progression** : 17/31 étapes complètes (13%)
 
 ---
 
@@ -466,4 +466,4 @@ chore:    Maintenance, build
 ---
 
 Dernière mise à jour : 2026-01-20  
-Version RayMap : 0.4.0 (Phase 1 complète, Phase 2 complète, Phase 3 complète, Phase 4 compléte, Phase 5 complete)
+Version RayMap : 0.4.0 (Phase 1 complète, Phase 2 complète, Phase 3 complète, Phase 4 compléte, Phase 5 complete, Phase 6 compléte)

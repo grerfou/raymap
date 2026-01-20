@@ -201,8 +201,21 @@ RMAPI Rectangle RM_GetQuadBounds(RM_Quad quad);
 // Center point in quad 
 RMAPI Vector2 RM_GetQuadCenter(RM_Quad quad);
 
-// Gety Area of a quad
+// Get Area of a quad
 RMAPI float RM_GetQuadArea(RM_Quad quad);
+
+
+//----------------------------------------------------------------
+// Point Mapping
+//----------------------------------------------------------------
+
+//  Map a point from texture space [0,1] to screen space
+RMAPI Vector2 RM_MapPoint(RM_Surface *surface, Vector2 texturePoint);
+
+// Map a point from screen space to texture space [0,1]
+RMAPI Vector2 RM_UnmapPoint(RM_Surface *surface, Vector2 screenPoint);
+
+
 
 //----------------------------------------------------------------
 // Advanced/Debug
@@ -310,17 +323,6 @@ static inline bool rm_SameSide(Vector2 p, Vector2 a, Vector2 b, Vector2 ref){
 
     return (cross1 * cross2) >= 0;
 }
-
-
-
-
-
-
-
-
-
-
-
 
 static void rm_GetDefaultResolutionForMode(RM_MapMode mode, int *cols, int *rows){
     switch (mode) {
@@ -1420,6 +1422,114 @@ RMAPI float RM_GetQuadArea(RM_Quad quad){
 
     return area;
 }
+
+//----------------------------------------------------------------
+// Advanced/Debug
+//----------------------------------------------------------------
+
+RMAPI Vector2 RM_MapPoint(RM_Surface *surface, Vector2 texturePoint) {
+    if (!surface) {
+        return (Vector2){-1, -1};
+    }
+    
+    float u = fmaxf(0.0f, fminf(1.0f, texturePoint.x));
+    float v = fmaxf(0.0f, fminf(1.0f, texturePoint.y));
+    
+    if (surface->mode == RM_MAP_HOMOGRAPHY) {
+        // Recalculer si nécessaire
+        if (surface->homographyNeedsUpdate) {
+            surface->homography = rm_ComputeHomography(surface->quad);
+            surface->homographyNeedsUpdate = false;
+        }
+        
+        return rm_ApplyHomography(surface->homography, u, v);
+    } else {
+        return rm_BilinearInterpolation(
+            surface->quad.topLeft,
+            surface->quad.topRight,
+            surface->quad.bottomLeft,
+            surface->quad.bottomRight,
+            u, v
+        );
+    }
+}
+
+RMAPI Vector2 RM_UnmapPoint(RM_Surface *surface, Vector2 screenPoint){
+    if (!surface){
+        return (Vector2){-1, -1};
+    }
+
+    // Verifie que le point est dans le quad
+    if (!RM_PointInQuad(screenPoint, surface->quad)){
+        return (Vector2){-1, -1};
+    }
+
+    if (surface->mode == RM_MAP_HOMOGRAPHY){
+        // use inverse homography
+        Matrix3x3 invH = rm_Matrix3x3Inverse(surface->homography);
+        return rm_ApplyHomography(invH, screenPoint.x, screenPoint.y);
+    } else {
+        // Bilinear res itérative -> Newton-Raphson
+        // Approximation simple: recherche par dichotomie
+        float u = 0.5f, v = 0.5f;
+        const int MAX_ITERATIONS = 10;
+        const float TOLERANCE = 0.5f;
+        
+        for (int iter = 0; iter < MAX_ITERATIONS; iter++) {
+            Vector2 mapped = rm_BilinearInterpolation(
+                surface->quad.topLeft,
+                surface->quad.topRight,
+                surface->quad.bottomLeft,
+                surface->quad.bottomRight,
+                u, v
+            );
+            
+            Vector2 error = {
+                screenPoint.x - mapped.x,
+                screenPoint.y - mapped.y
+            };
+            
+            float errorMag = sqrtf(error.x * error.x + error.y * error.y);
+            
+            if (errorMag < TOLERANCE) {
+                break;
+            }
+            
+            // Gradient descent simple
+            float step = 0.1f / (iter + 1);
+            
+            // Test dans 4 directions
+            Vector2 testU1 = rm_BilinearInterpolation(
+                surface->quad.topLeft, surface->quad.topRight,
+                surface->quad.bottomLeft, surface->quad.bottomRight,
+                u + step, v
+            );
+            
+            Vector2 testV1 = rm_BilinearInterpolation(
+                surface->quad.topLeft, surface->quad.topRight,
+                surface->quad.bottomLeft, surface->quad.bottomRight,
+                u, v + step
+            );
+            
+            // Calculer gradients
+            float gradU = (Vector2Distance(testU1, screenPoint) - errorMag) / step;
+            float gradV = (Vector2Distance(testV1, screenPoint) - errorMag) / step;
+            
+            // Update
+            u -= gradU * step * 0.5f;
+            v -= gradV * step * 0.5f;
+            
+            // Clamp
+            u = fmaxf(0.0f, fminf(1.0f, u));
+            v = fmaxf(0.0f, fminf(1.0f, v));
+        }
+
+        return (Vector2){u, v};
+    }
+}
+
+
+
 
 
 //----------------------------------------------------------------
