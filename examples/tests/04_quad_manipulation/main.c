@@ -12,7 +12,7 @@ int main(void) {
     printf("=== Test Quad Manipulation ===\n");
     
     // Créer une surface
-    RM_Surface *surface = RM_CreateSurface(400, 300, RM_MAP_MESH);
+    RM_Surface *surface = RM_CreateSurface(400, 300, RM_MAP_BILINEAR);
     
     // Test 1 : GetQuad sur quad par défaut
     printf("\nTest 1: Get quad par défaut\n");

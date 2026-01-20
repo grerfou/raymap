@@ -54,7 +54,7 @@ int main(void) {
     printf("TEST 1: Quad rectangle → matrice diagonale (scaling)\n");
     printf("──────────────────────────────────────────────────────\n");
 
-    RM_Surface *surface1 = RM_CreateSurface(400, 300, RM_MAP_PERSPECTIVE);
+    RM_Surface *surface1 = RM_CreateSurface(400, 300, RM_MAP_HOMOGRAPHY);
 
     // Quad rectangle (0,0) → (400,300)
     RM_Quad rectQuad = {
@@ -125,7 +125,7 @@ int main(void) {
     printf("TEST 2: Quad déformé → matrice correcte\n");
     printf("────────────────────────────────────────\n");
     
-    RM_Surface *surface2 = RM_CreateSurface(400, 300, RM_MAP_PERSPECTIVE);
+    RM_Surface *surface2 = RM_CreateSurface(400, 300, RM_MAP_HOMOGRAPHY);
     
     // Quad trapèze
     RM_Quad trapeze = {
@@ -331,8 +331,8 @@ int main(void) {
     printf("Appuyez sur ESC pour quitter.\n\n");
     
     // Créer deux surfaces pour comparaison
-    RM_Surface *surfaceMesh = RM_CreateSurface(400, 300, RM_MAP_MESH);
-    RM_Surface *surfacePersp = RM_CreateSurface(400, 300, RM_MAP_PERSPECTIVE);
+    RM_Surface *surfaceMesh = RM_CreateSurface(400, 300, RM_MAP_BILINEAR);
+    RM_Surface *surfacePersp = RM_CreateSurface(400, 300, RM_MAP_HOMOGRAPHY);
     
     RM_Quad visualQuad1 = {
         {100, 150},

@@ -258,7 +258,7 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 
 ---
 
-### Étape 4.2 : Mode PERSPECTIVE complet
+### Étape 4.2 : Mode PERSPECTIVE complet ✅ COMPLETE
 **But** : Utiliser l'homographie pour le warping
 
 **Commit** : `feat: PERSPECTIVE mode using homography transformation`
@@ -269,10 +269,10 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 ```
 
 **Tests** :
-- [ ] Test: Mode PERSPECTIVE foncti currently used, butonne
-- [ ] Test: Lignes droites restent droites
-- [ ] Test: Comparaison MESH vs PERSPECTIVE
-- [ ] Test: Points mappés correctement
+- [x] Test: Mode PERSPECTIVE foncti currently used, butonne
+- [x] Test: Lignes droites restent droites
+- [x] Test: Comparaison MESH vs PERSPECTIVE
+- [x] Test: Points mappés correctement
 
 **Fichier test** : `12_perspective_mode/`
 
@@ -289,10 +289,10 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 ```
 
 **Tests** :
-- [ ] Test: Mire de test (lignes droites)
-- [ ] Test: Grille déformée
-- [ ] Test: FPS pour chaque mode
-- [ ] Test: Qualité vs résolution
+- [x] Test: Mire de test (lignes droites)
+- [x] Test: Grille déformée
+- [x] Test: FPS pour chaque mode
+- [x] Test: Qualité vs résolution
 
 **Fichier test** : `13_mode_comparison/`
 
@@ -418,13 +418,13 @@ Les phases 8-12 restent inchangées :
 | 1. Foundation              | ✅ 4/4    | 4/4     | 4/4   |
 | 3. Mesh Warping (PRIORISÉ) | ✅ 3/3    | 3/3     | 3/3   |
 | 2. Calibration             | ✅ 3/3    | 3/3     | 3/3   |
-| 4. Homographie             | 🔄 1/3    | 1/3     | 1/3   |
+| 4. Homographie             | ✅ 3/3    | 3/3     | 3/3   |
 | 5. Configuration I/O       | 🔄 0/2    | 0/2     | 0/2   |
 | 6. Utilitaires             | 🔄 0/2    | 0/2     | 0/2   |
 | 7. Multi-Surface           | 🔄 0/1    | 0/1     | 0/1   |
 | 8-12.                      | 🔄 Future | 0/13    | 0/13  |
 
-**Progression** : 11/31 étapes complètes (13%)
+**Progression** : 13/31 étapes complètes (13%)
 
 ---
 
@@ -465,5 +465,5 @@ chore:    Maintenance, build
 
 ---
 
-Dernière mise à jour : 2024-12-31  
-Version RayMap : 0.3.0 (Phase 1 complète, Phase 3 en cours)
+Dernière mise à jour : 2026-01-20  
+Version RayMap : 0.4.0 (Phase 1 complète, Phase 2 complète, Phase 3 complète, Phase 4 compléte)

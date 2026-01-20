@@ -12,7 +12,7 @@ int main(void) {
     printf("=== Test Mesh Resolution ===\n\n");
     
     // Créer une surface
-    RM_Surface *surface = RM_CreateSurface(400, 300, RM_MAP_MESH);
+    RM_Surface *surface = RM_CreateSurface(400, 300, RM_MAP_BILINEAR);
     
     // Quad déformé (trapèze prononcé pour voir la qualité)
     RM_Quad trapeze = {

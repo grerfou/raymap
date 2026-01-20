@@ -17,7 +17,7 @@ int main(void) {
     printf("═══════════════════════════════════════\n\n");
     
     // Créer surface et calibration
-    RM_Surface *surface = RM_CreateSurface(500, 400, RM_MAP_MESH);
+    RM_Surface *surface = RM_CreateSurface(500, 400, RM_MAP_BILINEAR);
     RM_Calibration *calibration = RM_CreateCalibration(surface);
     
     // Test 1 : Reset initial (centré)

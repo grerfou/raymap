@@ -71,8 +71,8 @@ typedef struct {
 
 // Map mode enumeration
 typedef enum {
-    RM_MAP_MESH = 0,
-    RM_MAP_PERSPECTIVE
+    RM_MAP_BILINEAR = 0,
+    RM_MAP_HOMOGRAPHY
 } RM_MapMode;
 
 // Surface structure (opaque)
@@ -179,6 +179,17 @@ RMAPI int RM_GetActiveCorner(const RM_Calibration *calibration);
 // Drag corner
 RMAPI bool RM_IsCalibrate(const RM_Calibration *calibration);
 
+//----------------------------------------------------------------
+// Advanced/Debug
+//----------------------------------------------------------------
+
+#ifdef RAYMAP_DEBUG
+
+// Get internal mesh for analysis/debug
+// WARNING : Do not modify or free the returnes mesh
+RMAPI Mesh *RM_GetSurfaceMesh(RM_Surface *surface);
+
+#endif // RAYMAP_DEBUG
 
 #endif //RAYMAP_H
 
@@ -257,6 +268,26 @@ struct RM_Calibration {
 //---------------------------------------------------------------
 // Implementation : Internal Functions
 //---------------------------------------------------------------
+
+static void rm_GetDefaultResolutionForMode(RM_MapMode mode, int *cols, int *rows){
+    switch (mode) {
+        case RM_MAP_BILINEAR :
+            // Bilinear interpolation : medium res
+            *cols = 16;
+            *rows = 16;
+            break;
+        case RM_MAP_HOMOGRAPHY :
+            *cols = 32;
+            *rows = 32;
+            break;
+
+        default :
+            *cols = 16;
+            *rows =16;
+            break;
+    }
+}
+
 
 // 3x3 matrix opération
 // Ref : mathc (ferreyd), cglm, standard linear algebra
@@ -581,7 +612,7 @@ static void rm_GenerateBilinearMesh(RM_Surface *surface, int cols, int rows){
     RM_Quad q = surface->quad;
 
 
-    if (surface->mode == RM_MAP_PERSPECTIVE && surface->homographyNeedsUpdate){
+    if (surface->mode == RM_MAP_HOMOGRAPHY && surface->homographyNeedsUpdate){
         surface->homography = rm_ComputeHomography(surface->quad);
         surface->homographyNeedsUpdate = false;
         printf("Homographie calculée (mode PERSPECTIVE)\n");
@@ -599,7 +630,7 @@ static void rm_GenerateBilinearMesh(RM_Surface *surface, int cols, int rows){
 
             Vector2 pos;
 
-            if (surface->mode == RM_MAP_PERSPECTIVE){
+            if (surface->mode == RM_MAP_HOMOGRAPHY){
                 // persepctive mode utilise homographie
                 pos = rm_ApplyHomography(surface->homography, u, v);
             } else {
@@ -675,32 +706,18 @@ static void rm_UpdateMesh(RM_Surface *surface){
 
 RMAPI void RM_SetMapMode(RM_Surface *surface, RM_MapMode mode){
     if (!surface) return;
-
-    // Rien si mode d'ont change
     if (surface->mode == mode) return;
-
-    //change
+    
     surface->mode = mode;
-
-    //#warning "Verifier Quel la res change Vraiment "
-
-    //Adjust res
-    if (mode == RM_MAP_MESH){
-        // Mode Mesh: Res medium
-        surface->meshColumns = 4;
-        surface->meshRows = 4;
-    } else if (mode == RM_MAP_PERSPECTIVE) {
-        surface->meshColumns = 32;
-        surface->meshRows = 32;
-    }
-
+    
+    rm_GetDefaultResolutionForMode(mode, &surface->meshColumns, &surface->meshRows);
+    
     surface->meshNeedsUpdate = true;
     surface->homographyNeedsUpdate = true;
 }
 
-
 RMAPI RM_MapMode RM_GetMapMode(const RM_Surface *surface){
-    if (!surface) return RM_MAP_MESH; //default
+    if (!surface) return RM_MAP_BILINEAR; //default
         
     return surface->mode;
 }
@@ -755,13 +772,11 @@ RMAPI RM_Surface *RM_CreateSurface(int width, int height, RM_MapMode mode){
 
     // Init mesh (vide pour l'instant)
     surface->mesh = (Mesh){0};
-    surface->meshColumns = 16; // resolution default
-    surface->meshRows = 16;
+    // Résolution selon le mode
+    rm_GetDefaultResolutionForMode(mode, &surface->meshColumns, &surface->meshRows);
     surface->meshNeedsUpdate = true; 
-    
     surface->homography = rm_Matrix3x3Identity();
     surface->homographyNeedsUpdate = true;
-
     rm_UpdateMesh(surface);
 
     return surface;
@@ -1113,6 +1128,19 @@ RMAPI RM_CalibrationConfig *RM_GetCalibrationConfig(RM_Calibration *calibration)
 
     return &calibration->config;
 }
+
+//----------------------------------------------------------------
+// Advanced/Debug
+//----------------------------------------------------------------
+
+#ifdef RAYMAP_DEBUG
+
+RMAPI Mesh *RM_GetSurfaceMesh(RM_Surface *surface){
+    if (!surface) return NULL;
+    return &surface->mesh;
+}
+
+#endif // RAYMAP_DEBUG
 
 #endif //RAYMAP_IMPLEMENTATION
 

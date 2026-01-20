@@ -21,7 +21,7 @@ int main(void) {
     // SETUP : Une seule surface avec mode changeable
     // ═══════════════════════════════════════════════════════════
     
-    RM_Surface *surface = RM_CreateSurface(600, 450, RM_MAP_PERSPECTIVE);
+    RM_Surface *surface = RM_CreateSurface(600, 450, RM_MAP_HOMOGRAPHY);
     
     // Quad trapèze prononcé
     RM_Quad trapeze = {
@@ -37,7 +37,7 @@ int main(void) {
     
     printf(" Surface créée\n");
     printf("   Mode initial: %s\n\n", 
-           currentMode == RM_MAP_MESH ? "MESH" : "PERSPECTIVE");
+           currentMode == RM_MAP_BILINEAR ? "MESH" : "PERSPECTIVE");
     
     int cols, rows;
     RM_GetMeshResolution(surface, &cols, &rows);
@@ -84,15 +84,15 @@ int main(void) {
         // Toggle mode (SPACE)
         if (IsKeyPressed(KEY_SPACE)) {
             currentMode = RM_GetMapMode(surface);
-            RM_MapMode newMode = (currentMode == RM_MAP_MESH) ? RM_MAP_PERSPECTIVE : RM_MAP_MESH;
+            RM_MapMode newMode = (currentMode == RM_MAP_BILINEAR) ? RM_MAP_HOMOGRAPHY : RM_MAP_BILINEAR;
             RM_SetMapMode(surface, newMode);
             modeChanges++;
             
             RM_GetMeshResolution(surface, &cols, &rows);
             
             printf("\n Mode changé: %s → %s\n", 
-                   currentMode == RM_MAP_MESH ? "MESH" : "PERSPECTIVE",
-                   newMode == RM_MAP_MESH ? "MESH" : "PERSPECTIVE");
+                   currentMode == RM_MAP_BILINEAR ? "MESH" : "PERSPECTIVE",
+                   newMode == RM_MAP_BILINEAR ? "MESH" : "PERSPECTIVE");
             printf("   Résolution: %dx%d (%d vertices)\n", 
                    cols, rows, (cols+1)*(rows+1));
             
@@ -143,18 +143,18 @@ int main(void) {
         
         RM_BeginSurface(surface);
             // Couleur de fond selon mode
-            if (currentMode == RM_MAP_MESH) {
+            if (currentMode == RM_MAP_BILINEAR) {
                 ClearBackground((Color){20, 30, 50, 255}); // Bleu foncé
             } else {
                 ClearBackground((Color){20, 50, 30, 255}); // Vert foncé
             }
             
             // Titre
-            const char *modeText = (currentMode == RM_MAP_MESH) ? "MESH MODE" : "PERSPECTIVE";
-            Color titleColor = (currentMode == RM_MAP_MESH) ? YELLOW : ORANGE;
+            const char *modeText = (currentMode == RM_MAP_BILINEAR) ? "MESH MODE" : "PERSPECTIVE";
+            Color titleColor = (currentMode == RM_MAP_BILINEAR) ? YELLOW : ORANGE;
             DrawText(modeText, 150, 50, 50, titleColor);
             
-            const char *subText = (currentMode == RM_MAP_MESH) ? "(Bilinear)" : "(Homography)";
+            const char *subText = (currentMode == RM_MAP_BILINEAR) ? "(Bilinear)" : "(Homography)";
             DrawText(subText, 200, 110, 30, LIGHTGRAY);
             
             // Grille de référence
@@ -211,14 +211,14 @@ int main(void) {
                 // Info mode actuel
                 DrawRectangle(20, 110, 450, 200, ColorAlpha(BLACK, 0.85f));
                 
-                Color modeColor = (currentMode == RM_MAP_MESH) ? YELLOW : ORANGE;
+                Color modeColor = (currentMode == RM_MAP_BILINEAR) ? YELLOW : ORANGE;
                 DrawText(TextFormat("MODE ACTUEL: %s", 
-                        currentMode == RM_MAP_MESH ? "MESH" : "PERSPECTIVE"), 
+                        currentMode == RM_MAP_BILINEAR ? "MESH" : "PERSPECTIVE"), 
                         30, 120, 24, modeColor);
                 DrawRectangle(30, 150, 410, 2, modeColor);
                 
                 DrawText("Algorithme:", 40, 165, 18, LIGHTGRAY);
-                DrawText(currentMode == RM_MAP_MESH ? "Interpolation bilinéaire" : "Homographie (DLT)", 
+                DrawText(currentMode == RM_MAP_BILINEAR ? "Interpolation bilinéaire" : "Homographie (DLT)", 
                         160, 165, 18, WHITE);
                 
                 DrawText("Résolution:", 40, 190, 18, LIGHTGRAY);
@@ -226,7 +226,7 @@ int main(void) {
                         160, 190, 18, WHITE);
                 
                 DrawText("Effet visuel:", 40, 215, 18, LIGHTGRAY);
-                if (currentMode == RM_MAP_MESH) {
+                if (currentMode == RM_MAP_BILINEAR) {
                     DrawText(" Lignes COURBES", 40, 240, 16, RED);
                     DrawText(" Distorsion perspective", 40, 260, 16, RED);
                 } else {
@@ -240,19 +240,19 @@ int main(void) {
                 DrawRectangle(1280 - 460, 145, 430, 2, LIME);
                 
                 DrawText("Ligne VERTE (↘):", 1280 - 450, 160, 16, GREEN);
-                DrawText(currentMode == RM_MAP_MESH ? "Courbe" : "Droite", 
+                DrawText(currentMode == RM_MAP_BILINEAR ? "Courbe" : "Droite", 
                         1280 - 310, 160, 16, WHITE);
                 
                 DrawText("Ligne ORANGE (↙):", 1280 - 450, 185, 16, ORANGE);
-                DrawText(currentMode == RM_MAP_MESH ? "Courbe" : "Droite", 
+                DrawText(currentMode == RM_MAP_BILINEAR ? "Courbe" : "Droite", 
                         1280 - 310, 185, 16, WHITE);
                 
                 DrawText("Ligne ROUGE (|):", 1280 - 450, 210, 16, RED);
-                DrawText(currentMode == RM_MAP_MESH ? "Courbe" : "Droite", 
+                DrawText(currentMode == RM_MAP_BILINEAR ? "Courbe" : "Droite", 
                         1280 - 310, 210, 16, WHITE);
                 
                 DrawText("Ligne BLEUE (—):", 1280 - 450, 235, 16, BLUE);
-                DrawText(currentMode == RM_MAP_MESH ? "Courbe" : "Droite", 
+                DrawText(currentMode == RM_MAP_BILINEAR ? "Courbe" : "Droite", 
                         1280 - 310, 235, 16, WHITE);
                 
                 DrawText(TextFormat("Changements: %d", modeChanges), 
@@ -283,9 +283,9 @@ int main(void) {
     
     // Test 1: Mode PERSPECTIVE fonctionne
     printf("Test 1: Mode PERSPECTIVE activable\n");
-    RM_SetMapMode(surface, RM_MAP_PERSPECTIVE);
+    RM_SetMapMode(surface, RM_MAP_HOMOGRAPHY);
     RM_MapMode mode = RM_GetMapMode(surface);
-    if (mode == RM_MAP_PERSPECTIVE) {
+    if (mode == RM_MAP_HOMOGRAPHY) {
         printf("  Mode PERSPECTIVE OK\n");
         testsPassed++;
     } else {
@@ -304,9 +304,9 @@ int main(void) {
     
     // Test 3: Mode MESH fonctionne aussi
     printf("\nTest 3: Retour au mode MESH\n");
-    RM_SetMapMode(surface, RM_MAP_MESH);
+    RM_SetMapMode(surface, RM_MAP_BILINEAR);
     mode = RM_GetMapMode(surface);
-    if (mode == RM_MAP_MESH) {
+    if (mode == RM_MAP_BILINEAR) {
         printf("   Mode MESH OK\n");
         printf("   Changement de mode fonctionnel\n");
         testsPassed++;

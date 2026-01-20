@@ -17,7 +17,8 @@ LIBS = -lraylib -lm -lpthread -ldl
 #EXAMPLE = 09_calibration_ui
 #EXAMPLE = 10_calibration_utils
 #EXAMPLE = 11_homography_math
-EXAMPLE = 12_perspective_mode
+#EXAMPLE = 12_perspective_mode
+#EXAMPLE = 13_mode_comparaison
 
 
 

@@ -14,7 +14,7 @@ int main(void) {
     printf("═══════════════════════════════════════\n\n");
     
     // Créer une surface
-    RM_Surface *surface = RM_CreateSurface(500, 400, RM_MAP_MESH);
+    RM_Surface *surface = RM_CreateSurface(500, 400, RM_MAP_BILINEAR);
     
     // Quad TRÈS déformé (pour accentuer les différences)
     RM_Quad quad = {
