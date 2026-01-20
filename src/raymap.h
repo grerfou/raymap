@@ -180,6 +180,31 @@ RMAPI int RM_GetActiveCorner(const RM_Calibration *calibration);
 RMAPI bool RM_IsCalibrate(const RM_Calibration *calibration);
 
 //----------------------------------------------------------------
+// IO
+//----------------------------------------------------------------
+
+// Save surface config to file
+RMAPI bool RM_SaveConfig(const RM_Surface *surface, const char *filepath);
+
+RMAPI bool RM_LoadConfig(RM_Surface *surface, const char *filepath);
+
+//----------------------------------------------------------------
+// Geometry utilities
+//----------------------------------------------------------------
+
+// chech if point inside a quad
+RMAPI bool RM_PointInQuad(Vector2 point, RM_Quad quad);
+
+// Axi aligned boundingbox quad
+RMAPI Rectangle RM_GetQuadBounds(RM_Quad quad);
+
+// Center point in quad 
+RMAPI Vector2 RM_GetQuadCenter(RM_Quad quad);
+
+// Gety Area of a quad
+RMAPI float RM_GetQuadArea(RM_Quad quad);
+
+//----------------------------------------------------------------
 // Advanced/Debug
 //----------------------------------------------------------------
 
@@ -268,6 +293,34 @@ struct RM_Calibration {
 //---------------------------------------------------------------
 // Implementation : Internal Functions
 //---------------------------------------------------------------
+
+
+
+static inline float rm_Cross2D(Vector2 a, Vector2 b){
+    return a.x * b.y - a.y * b.x;
+}
+
+static inline bool rm_SameSide(Vector2 p, Vector2 a, Vector2 b, Vector2 ref){
+    Vector2 ab = {b.x - a.x, b.y - a.y};
+    Vector2 ap = {p.x - a.x, p.y - a.y};
+    Vector2 ar = {ref.x - a.x, ref.y - a.y};
+
+    float cross1 = rm_Cross2D(ab, ap);
+    float cross2 = rm_Cross2D(ab, ar);
+
+    return (cross1 * cross2) >= 0;
+}
+
+
+
+
+
+
+
+
+
+
+
 
 static void rm_GetDefaultResolutionForMode(RM_MapMode mode, int *cols, int *rows){
     switch (mode) {
@@ -1128,6 +1181,246 @@ RMAPI RM_CalibrationConfig *RM_GetCalibrationConfig(RM_Calibration *calibration)
 
     return &calibration->config;
 }
+
+
+RMAPI bool RM_SaveConfig(const RM_Surface *surface, const char *filepath){
+    if (!surface || !filepath){
+        printf("ERROR: RM_SaveConfig - Invalid parameters\n");
+        return false;
+    }
+
+    FILE *file = fopen(filepath, "w");
+    if (!file){
+        printf("Error: RM_SaveConfig _ Connot open file '%s' for writing\n", filepath);
+        return false;
+    }
+
+
+
+    // header
+    fprintf(file, "# RAYMAP Config File\n");
+    fprintf(file, "# Format: text/plain v1.0\n");
+    fprintf(file, "\n");
+
+    // Surface dim
+    fprintf(file, "[Surface]\n");
+    fprintf(file, "width=%d\n", surface->width);
+    fprintf(file, "height=%d\n", surface->height);
+    fprintf(file, "\n");
+
+    // Mapping mode
+    fprintf(file, "[Mode]\n");
+    fprintf(file, "mode=%s\n", surface->mode == RM_MAP_BILINEAR ? "BILINEAR" : "HOMOGRAPHY");
+    fprintf(file, "\n");
+
+    // Mesh resolution
+    fprintf(file, "[Mesh]\n");
+    fprintf(file, "columns=%d\n", surface->meshColumns);
+    fprintf(file, "rows=%d\n", surface->meshRows);
+    fprintf(file, "\n");
+
+    // Quad Corners
+    fprintf(file, "[Quad]\n");
+    fprintf(file, "topLeft=%.2f, %.2f\n", surface->quad.topLeft.x, surface->quad.topLeft.y);
+    fprintf(file, "topRight=%.2f, %.2f\n", surface->quad.topRight.x, surface->quad.topRight.y);
+    fprintf(file, "bottomLeft=%.2f, %.2f\n", surface->quad.bottomLeft.x, surface->quad.bottomLeft.y);
+    fprintf(file, "bottomRight=%.2f, %.2f\n", surface->quad.bottomRight.x, surface->quad.bottomRight.y);
+    fprintf(file, "\n");
+
+    fclose(file);
+
+    printf("INFO: Configuration saved to '%s'\n", filepath);
+    return true;
+}
+
+
+RMAPI bool RM_LoadConfig(RM_Surface *surface, const char *filepath) {
+    if (!surface || !filepath) {
+        printf("ERROR: RM_LoadConfig - Invalid parameters\n");
+        return false;
+    }
+    
+    FILE *file = fopen(filepath, "r");
+    if (!file) {
+        printf("ERROR: RM_LoadConfig - Cannot open file '%s' for reading\n", filepath);
+        return false;
+    }
+    
+    char line[256];
+    RM_Quad quad = surface->quad;
+    int meshCols = surface->meshColumns;
+    int meshRows = surface->meshRows;
+    RM_MapMode mode = surface->mode;
+    bool quadLoaded = false;
+    
+    while (fgets(line, sizeof(line), file)) {
+        // supprime retour ligne 
+        line[strcspn(line, "\n")] = 0;
+        
+        // Ignore comments, empty lines, section
+        if (line[0] == '#' || line[0] == '\0' || line[0] == '[') {
+            continue;
+        }
+        
+        // Trouver le séparateur '='
+        char *equals = strchr(line, '=');
+        if (!equals) continue;
+        
+        // key et value
+        *equals = '\0';
+        char *key = line;
+        char *value = equals + 1;
+        
+        // Mode
+        if (strcmp(key, "mode") == 0) {
+            if (strcmp(value, "BILINEAR") == 0) {
+                mode = RM_MAP_BILINEAR;
+            } else if (strcmp(value, "HOMOGRAPHY") == 0) {
+                mode = RM_MAP_HOMOGRAPHY;
+            }
+        }
+        
+        // Mesh resolution
+        else if (strcmp(key, "columns") == 0) {
+            meshCols = atoi(value);
+        }
+        else if (strcmp(key, "rows") == 0) {
+            meshRows = atoi(value);
+        }
+        
+        // Quad corners
+        else if (strcmp(key, "topLeft") == 0) {
+            if (sscanf(value, "%f,%f", &quad.topLeft.x, &quad.topLeft.y) == 2) {
+                quadLoaded = true;
+            }
+        }
+        else if (strcmp(key, "topRight") == 0) {
+            sscanf(value, "%f,%f", &quad.topRight.x, &quad.topRight.y);
+        }
+        else if (strcmp(key, "bottomLeft") == 0) {
+            sscanf(value, "%f,%f", &quad.bottomLeft.x, &quad.bottomLeft.y);
+        }
+        else if (strcmp(key, "bottomRight") == 0) {
+            sscanf(value, "%f,%f", &quad.bottomRight.x, &quad.bottomRight.y);
+        }
+    }
+    
+    fclose(file);
+    
+    if (!quadLoaded) {
+        printf("WARNING: RM_LoadConfig - No quad data found in file\n");
+        return false;
+    }
+    
+    // applique config
+    surface->mode = mode;
+    surface->meshColumns = meshCols;
+    surface->meshRows = meshRows;
+    surface->meshNeedsUpdate = true;
+    surface->homographyNeedsUpdate = true;
+    
+    // Applique le quad
+    RM_SetQuad(surface, quad);
+    
+    printf("INFO: Configuration loaded from '%s'\n", filepath);
+    return true;
+}
+
+//----------------------------------------------------------------
+// Geometry Utilities
+//----------------------------------------------------------------
+
+
+RMAPI bool RM_PointInQuad(Vector2 point, RM_Quad quad){
+    Vector2 center = {
+        (quad.topLeft.x + quad.topRight.x + quad.bottomLeft.x + quad.bottomRight.x) / 4.0f,
+        (quad.topLeft.y + quad.topRight.y + quad.bottomLeft.y + quad.bottomRight.y) / 4.0f
+    };
+
+
+    // Edges
+
+    // topleft, topRight 
+    if (!rm_SameSide(point, quad.topLeft, quad.topRight, center)){
+        return false;
+    }
+
+    // topRight, bottomRight
+    if (!rm_SameSide(point, quad.topRight, quad.bottomRight, center)){
+        return false;
+    }
+    
+    // bottomRight, bottomLeft
+    if (!rm_SameSide(point, quad.bottomRight, quad.bottomLeft, center)){
+        return false;
+    }
+    
+    // bottomLeft -> topLeft
+    if (!rm_SameSide(point, quad.bottomLeft, quad.topLeft, center)){
+        return false;
+    }
+
+    return true;
+}
+
+RMAPI Rectangle RM_GetQuadBounds(RM_Quad quad){
+    // min/max X,Y
+    float minX = quad.topLeft.x;
+    float maxX = quad.topLeft.x;
+    float minY = quad.topLeft.y;
+    float maxY = quad.topLeft.y;
+
+    // top right
+    if (quad.topRight.x < minX) minX = quad.topRight.x;
+    if (quad.topRight.x > maxX) maxX = quad.topRight.x;
+    if (quad.topRight.y < minY) minY = quad.topRight.y;
+    if (quad.topRight.y > maxY) maxY = quad.topRight.y;
+
+    // bottom Left
+    if (quad.bottomLeft.x < minX) minX = quad.bottomLeft.x;
+    if (quad.bottomLeft.x > maxX) maxX = quad.bottomLeft.x;
+    if (quad.bottomLeft.y < minY) minY = quad.bottomLeft.y;
+    if (quad.bottomLeft.y > maxY) maxY = quad.bottomLeft.y;
+
+    // bottom Right
+     if(quad.bottomRight.x < minX) minX = quad.bottomRight.x;
+     if(quad.bottomRight.x > maxX) maxX = quad.bottomRight.x;
+     if(quad.bottomRight.y < minY) minY = quad.bottomRight.y;
+     if(quad.bottomRight.y < maxY) maxY = quad.bottomRight.y;
+
+     return (Rectangle){
+         minX,
+         minY,
+         maxX - minX,
+         maxY - minY
+     };
+}
+
+RMAPI Vector2 RM_GetQuadCenter(RM_Quad quad) {
+    return (Vector2){
+        (quad.topLeft.x + quad.topRight.x + quad.bottomLeft.x + quad.bottomRight.x) / 4.0f,
+        (quad.topLeft.y + quad.topRight.y + quad.bottomLeft.y + quad.bottomRight.y) / 4.0f
+    };
+}
+
+RMAPI float RM_GetQuadArea(RM_Quad quad){
+    // Shoelace formule (aire d'un polygone)
+    
+    float x1 = quad.topLeft.x,  y1 = quad.topLeft.y;
+    float x2 = quad.topRight.x, y2 = quad.topRight.y;
+    float x3 = quad.bottomRight.x, y3 = quad.bottomRight.y;
+    float x4 = quad.bottomLeft.x,  y4 = quad.bottomLeft.y;
+    
+    float area = 0.5f * fabsf(
+            x1 * (y2 - y4) +
+            x2 * (y3 - y1) +
+            x3 * (y4 - y2) +
+            x4 * (y1 - y3) 
+            );
+
+    return area;
+}
+
 
 //----------------------------------------------------------------
 // Advanced/Debug

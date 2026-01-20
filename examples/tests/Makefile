@@ -19,6 +19,9 @@ LIBS = -lraylib -lm -lpthread -ldl
 #EXAMPLE = 11_homography_math
 #EXAMPLE = 12_perspective_mode
 #EXAMPLE = 13_mode_comparaison
+#EXAMPLE = 14_config_io
+#EXAMPLE = 14_test
+EXAMPLE = 16_geometry_utils
 
 
 
@@ -33,12 +36,10 @@ $(TARGET):
 	$(CC) $(SRC) $(INCLUDES) $(CFLAGS) $(LIBS) -o $(TARGET)
 
 clean:
-	rm -rf bin
+	rm -rf bin *.txt
 
 run : clean $(TARGET)
 	./$(TARGET)
-
-
 
 
 .PHONY : all clean run

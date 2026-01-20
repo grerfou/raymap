@@ -278,7 +278,7 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 
 ---
 
-### Étape 4.3 : Comparaison modes
+### Étape 4.3 : Comparaison modes ✅ COMPLETE
 **But** : Valider la différence entre bilinéaire et perspective
 
 **Commit** : `test: visual comparison between MESH and PERSPECTIVE modes`
@@ -298,9 +298,9 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 
 ---
 
-## Phase 5 : Configuration I/O 🔄 TODO
+## Phase 5 : Configuration I/O ✅ COMPLETE
 
-### Étape 5.1 : Save/Load texte
+### Étape 5.1 : Save/Load texte ✅ COMPLETE
 **But** : Sauvegarder les configurations de quad
 
 **Commit** : `feat: save and load quad configuration (text format)`
@@ -311,16 +311,16 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 ```
 
 **Tests** :
-- [ ] Test: Sauvegarder quad → fichier créé
-- [ ] Test: Charger quad → positions correctes
-- [ ] Test: Fichier invalide géré gracieusement
-- [ ] Test: Round-trip save→load identique
+- [x] Test: Sauvegarder quad → fichier créé
+- [x] Test: Charger quad → positions correctes
+- [x] Test: Fichier invalide géré gracieusement
+- [x] Test: Round-trip save→load identique
 
 **Fichier test** : `14_config_io/`
 
 ---
 
-### Étape 5.2 : Export JSON
+### Étape 5.2 : Export JSON 🔄 Not useful at the moment 
 **But** : Format standard pour partage et outils externes
 
 **Commit** : `feat: JSON export/import for configuration`
@@ -339,9 +339,9 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 
 ---
 
-## Phase 6 : Utilitaires 🔄 TODO
+## Phase 6 : Utilitaires ✅ COMPLETE
 
-### Étape 6.1 : Géométrie de base
+### Étape 6.1 : Géométrie de base ✅ COMPLETE
 **But** : Fonctions utilitaires pour quads
 
 **Commit** : `feat: utility functions for quad geometry`
@@ -352,9 +352,9 @@ Plan détaillé du développement de RayMap avec objectifs, commits et tests pou
 ```
 
 **Tests** :
-- [ ] Test: Point dans quad → true
-- [ ] Test: Point hors quad → false
-- [ ] Test: Bounds correctes
+- [x] Test: Point dans quad → true
+- [x] Test: Point hors quad → false
+- [x] Test: Bounds correctes
 
 **Fichier test** : `16_geometry_utils/`
 
@@ -419,12 +419,12 @@ Les phases 8-12 restent inchangées :
 | 3. Mesh Warping (PRIORISÉ) | ✅ 3/3    | 3/3     | 3/3   |
 | 2. Calibration             | ✅ 3/3    | 3/3     | 3/3   |
 | 4. Homographie             | ✅ 3/3    | 3/3     | 3/3   |
-| 5. Configuration I/O       | 🔄 0/2    | 0/2     | 0/2   |
-| 6. Utilitaires             | 🔄 0/2    | 0/2     | 0/2   |
+| 5. Configuration I/O       | ✅ 2/2    | 2/2     | 2/2   |
+| 6. Utilitaires             | 🔄 1/2    | 1/2     | 1/2   |
 | 7. Multi-Surface           | 🔄 0/1    | 0/1     | 0/1   |
 | 8-12.                      | 🔄 Future | 0/13    | 0/13  |
 
-**Progression** : 13/31 étapes complètes (13%)
+**Progression** : 16/31 étapes complètes (13%)
 
 ---
 
@@ -466,4 +466,4 @@ chore:    Maintenance, build
 ---
 
 Dernière mise à jour : 2026-01-20  
-Version RayMap : 0.4.0 (Phase 1 complète, Phase 2 complète, Phase 3 complète, Phase 4 compléte)
+Version RayMap : 0.4.0 (Phase 1 complète, Phase 2 complète, Phase 3 complète, Phase 4 compléte, Phase 5 complete)
