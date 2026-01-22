@@ -798,8 +798,14 @@ static RM_CalibrationConfig rm_GetDefaultCalibrationConfig(void){
 
 
 RMAPI RM_Surface *RM_CreateSurface(int width, int height, RM_MapMode mode){
+    
     // Alloue memoire pour la structure 
     RM_Surface *surface = (RM_Surface *)RMMALLOC(sizeof(RM_Surface));
+    if (!surface){
+        TraceLog(LOG_ERROR, "RAYMAP : Failed to allocate surface");
+        return NULL;
+    }
+
     if (!surface) return NULL; // gestion erreur
 
     surface->width = width;
@@ -816,6 +822,11 @@ RMAPI RM_Surface *RM_CreateSurface(int width, int height, RM_MapMode mode){
 
     // création RenderTexture
     surface->target = LoadRenderTexture(width, height);
+    if (surface->target.id == 0){
+        TraceLog(LOG_ERROR, "RAYMAP: Failed to create render texture");
+        RMFREE(surface);
+        return NULL;
+    }
 
     // Init mesh (vide pour l'instant)
     surface->mesh = (Mesh){0};
