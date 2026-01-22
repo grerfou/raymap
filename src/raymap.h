@@ -7,22 +7,6 @@
 *       calibration. Perfect for video mapping installations, multi-projector setups,
 *       and creative projection on non-flat surfaces.
 *
-*   FEATURES:
-*
-*   MATHEMATICAL REFERENCES:
-*       - Homography computation based on Direct Linear Transform (DLT)
-*         Reference: OpenCV cv::findHomography() implementation
-*         https://github.com/opencv/opencv/blob/master/modules/calib3d/src/fundam.cpp
-*
-*       - Matrix operations inspired by:
-*         * mathc by Ferreyd: https://github.com/felselva/mathc
-*         * cglm - OpenGL Mathematics (glm) for C: https://github.com/recp/cglm
-*
-*       - Theoretical foundation:
-*         "Multiple View Geometry in Computer Vision"
-*         by Richard Hartley and Andrew Zisserman
-*         Chapter 4: Estimation - 2D Homographies
-*
 *
 *   DEPENDENCIES:
 *       - raylib 5.0+ (https://www.raylib.com)
@@ -78,8 +62,6 @@ typedef enum {
 // Surface structure (opaque)
 typedef struct RM_Surface RM_Surface;
 
-// Calibration structure (opaque)
-typedef struct RM_Calibration RM_Calibration;
 
 // Calibration config
 typedef struct {
@@ -94,6 +76,16 @@ typedef struct {
     int gridResolutionX;
     int gridResolutionY;
 } RM_CalibrationConfig;
+
+
+typedef struct RM_Calibration {
+    RM_Surface *surface;           // Pointer to the surface being calibrated
+    RM_CalibrationConfig config;   // Visual configuration (colors, grid, etc.)
+    int activeCorner;              // Currently selected corner (-1 if none)
+    Vector2 dragOffset;            // Offset for smooth dragging
+    bool enabled;                  // Calibration mode enabled/disabled
+} RM_Calibration;
+
 
 //--------------------------------------------------------------------------------------------
 // Surface Management Function
@@ -143,41 +135,48 @@ RMAPI RM_MapMode RM_GetMapMode(const RM_Surface *surface);
 // Calibration
 //----------------------------------------------------------------
 
-// Create Calibration session
-RMAPI RM_Calibration *RM_CreateCalibration(RM_Surface *surface);
 
-// Destroy colibration session
-RMAPI void RM_DestroyCalibration(RM_Calibration *calibration);
+// Init Calibration with default setting
+// return calib struct ready to use (no malloc)
+RMAPI RM_Calibration RM_CalibrationDefault(RM_Surface *surface);
 
-// Begin calibration
+// Update calib input and corner drag
+// coll every frame when active
 RMAPI void RM_UpdateCalibration(RM_Calibration *calibration);
 
-// End Calibration 
-RMAPI void RM_EndCalibration(RM_Calibration *calibration);
+// Update calib with auto toggle key
+// toggle check + updatein one call 
+// Example: RM_UpdateCalibrationInput(&calib, KEY_TAB);
+// Pass 0 for togglekey to disable toggleing
+RMAPI void RM_UpdateCalibrationInput(RM_Calibration *calibration, int toggleKey);
 
-// Draw complete  Calibration
-RMAPI void RM_DrawCalibration(const RM_Calibration *calibration);
+//Toggle calibration on/off
+RMAPI void RM_ToggleCalibration(RM_Calibration *calibration);
 
-// Draw only corner
-RMAPI void RM_DrawCalibrationCorners(const RM_Calibration *calibration);
+// Draw complete calib overlay
+// nothing if calib disable
+RMAPI void RM_DrawCalibration(RM_Calibration calibration);
 
-// Draw only quad border
-RMAPI void RM_DrawCalibrationBorder(const RM_Calibration *calibration);
+// Draw only the corner handles
+RMAPI void RM_DrawCalibrationCorners(RM_Calibration calibration);
 
-// Draw only grid
-RMAPI void RM_DrawCalibrationGrid(const RM_Calibration *calibration);
+// Draw only the quad border
+RMAPI void RM_DrawCalibrationBorder(RM_Calibration calibration);
 
-// Calibration Config
-RMAPI RM_CalibrationConfig *RM_GetCalibrationConfig(RM_Calibration *calibration);
+// Draw only the deformation grid
+RMAPI void RM_DrawCalibrationGrid(RM_Calibration calibration);
+
+// Reset quad to center 
+RMAPI void RM_ResetCalibrationQuad(RM_Calibration *calibration, int screenWidth, int screenHeight);
 
 // Reset quad
 RMAPI void RM_ResetQuad(RM_Surface *surface, int screenWidth, int screenHeight);
 
-// Active corner 
-RMAPI int RM_GetActiveCorner(const RM_Calibration *calibration);
+// active corner index
+RMAPI int RM_GetActiveCorner(RM_Calibration calibration);
 
-// Drag corner
-RMAPI bool RM_IsCalibrate(const RM_Calibration *calibration);
+// Check currently draging corner
+RMAPI bool RM_IsCalibrating(RM_Calibration calibration);
 
 //----------------------------------------------------------------
 // IO
@@ -293,13 +292,6 @@ struct RM_Surface {
     bool meshNeedsUpdate;
     Matrix3x3 homography;
     bool homographyNeedsUpdate;
-};
-
-struct RM_Calibration {
-    RM_Surface *surface;
-    RM_CalibrationConfig config;
-    int activeCorner;
-    Vector2 dragOffset;
 };
 
 
@@ -969,49 +961,66 @@ RMAPI void RM_DrawSurface(const RM_Surface *surface){
 // Calibration 
 //-------------------------------------------------------------
 
-RMAPI RM_Calibration *RM_CreateCalibration(RM_Surface *surface){
-    if (!surface) return NULL;
+/*
 
-    RM_Calibration *calib = (RM_Calibration *)RMMALLOC(sizeof(RM_Calibration));
-    if (!calib) return NULL;
+RMAPI void RM_ResetQuad(RM_Surface *surface, int screenWidth, int screenHeight){
+    if (!surface) return;
 
-    calib->surface = surface;
-    calib->config = rm_GetDefaultCalibrationConfig();
-    calib->activeCorner = -1;
-    calib->dragOffset = (Vector2){ 0, 0 };
+    int surfaceWidth = surface->width;
+    int surfaceHeight = surface->height;
 
+    int x = (screenWidth - surfaceWidth) / 2;
+    int y = (screenHeight - surfaceHeight) / 2;
+
+    RM_Quad CenterQuad = {
+        { (float)x, (float)y },
+        { (float)(x + surfaceWidth), (float)y },
+        { (float)x, (float)(y + surfaceHeight) },
+        { (float)(x + surfaceWidth), (float)(y + surfaceHeight) }
+    };
+
+    RM_SetQuad(surface, CenterQuad);
+}
+
+*/
+
+//-------------------------------------------------------------
+// Calibration Implementation
+//-------------------------------------------------------------
+
+RMAPI RM_Calibration RM_CalibrationDefault(RM_Surface *surface){
+    RM_Calibration calib = {0};
+    
+    calib.surface = surface;
+    calib.config = rm_GetDefaultCalibrationConfig();
+    calib.activeCorner = -1;
+    calib.dragOffset = (Vector2){0, 0};
+    calib.enabled = true;  // Enabled by default
+    
     return calib;
 }
 
-RMAPI void RM_DestroyCalibration(RM_Calibration *calibration){
+RMAPI void RM_ToggleCalibration(RM_Calibration *calibration){
     if (!calibration) return;
-
-    RMFREE(calibration);
-}
-
-RMAPI void RM_BeginCalibration(RM_Calibration *calibration){
-    if (!calibration) return;
-
-    // Placeholder - 
-    // MODE special ? Desactiver normal render ? etc ..
-}
-
-RMAPI void RM_EndCalibration(RM_Calibration *calibration){
-    if (!calibration) return;
-
-    // Placeholder
+    
+    calibration->enabled = !calibration->enabled;
+    
+    // Clean up when disabling during a drag
+    if (!calibration->enabled) {
+        calibration->activeCorner = -1;
+    }
 }
 
 RMAPI void RM_UpdateCalibration(RM_Calibration *calibration){
     if (!calibration || !calibration->surface) return;
+    if (!calibration->enabled) return;  // Skip if disabled
 
     RM_Quad quad = RM_GetQuad(calibration->surface);
     Vector2 mousePos = GetMousePosition();
     float cornerRadius = calibration->config.cornerRadius;
     
-    // Clic detection
+    // Click detection on corners
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)){
-        // check coin
         Vector2 corners[4] = {
             quad.topLeft,
             quad.topRight,
@@ -1024,22 +1033,18 @@ RMAPI void RM_UpdateCalibration(RM_Calibration *calibration){
         for (int i = 0; i < 4; i++){
             float dist = Vector2Distance(mousePos, corners[i]);
 
-            if (dist <= cornerRadius *1.5f) {
+            if (dist <= cornerRadius * 1.5f) {
                 calibration->activeCorner = i;
-
-                // Calculer offset -> drag fluide
                 calibration->dragOffset = Vector2Subtract(corners[i], mousePos);
                 break;
             }
         }
     }
 
-
-    // Drag
-    if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)){
-        // Calcul posision avec offset
+    // Drag corner
+    if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && calibration->activeCorner >= 0){
         Vector2 newPos = Vector2Add(mousePos, calibration->dragOffset);
-        // Update coin 
+        
         switch (calibration->activeCorner){
             case 0: quad.topLeft = newPos; break;
             case 1: quad.topRight = newPos; break;
@@ -1047,30 +1052,43 @@ RMAPI void RM_UpdateCalibration(RM_Calibration *calibration){
             case 3: quad.bottomLeft = newPos; break;
         }
 
-        // apply new quad
         RM_SetQuad(calibration->surface, quad);
     }
 
     // End drag
     if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)){
-        calibration->activeCorner = -1; // deselectionner
+        calibration->activeCorner = -1;
     }
 }
 
-RMAPI void RM_DrawCalibration(const RM_Calibration *calibration){
-    if (!calibration || !calibration->surface) return;
+RMAPI void RM_UpdateCalibrationInput(RM_Calibration *calibration, int toggleKey){
+    if (!calibration) return;
+    
+    // Check toggle key (if provided)
+    if (toggleKey != 0 && IsKeyPressed(toggleKey)) {
+        RM_ToggleCalibration(calibration);
+    }
+    
+    // Update calibration (does nothing if disabled)
+    RM_UpdateCalibration(calibration);
+}
+
+RMAPI void RM_DrawCalibration(RM_Calibration calibration){
+    if (!calibration.surface) return;
+    if (!calibration.enabled) return;  // Skip if disabled
 
     RM_DrawCalibrationBorder(calibration);
     RM_DrawCalibrationGrid(calibration); 
     RM_DrawCalibrationCorners(calibration);
 }
 
-RMAPI void RM_DrawCalibrationCorners(const RM_Calibration *calibration){
-    if (!calibration || !calibration->surface) return;
-    if (!calibration->config.showCorners) return;
+RMAPI void RM_DrawCalibrationCorners(RM_Calibration calibration){
+    if (!calibration.surface) return;
+    if (!calibration.enabled) return;
+    if (!calibration.config.showCorners) return;
 
-    RM_Quad quad = RM_GetQuad(calibration->surface);
-    RM_CalibrationConfig cfg = calibration->config;
+    RM_Quad quad = RM_GetQuad(calibration.surface);
+    RM_CalibrationConfig cfg = calibration.config;
 
     Vector2 corners[4] = {
         quad.topLeft,
@@ -1080,70 +1098,65 @@ RMAPI void RM_DrawCalibrationCorners(const RM_Calibration *calibration){
     };
 
     for (int i = 0; i < 4; i++){
-
-        Color cornerColor = (i == calibration->activeCorner)
+        Color cornerColor = (i == calibration.activeCorner)
             ? cfg.selectedCornerColor
             : cfg.cornerColor;
 
-        // cercle
+        // Draw circle
         DrawCircleV(corners[i], cfg.cornerRadius, cornerColor);
         
-        // Bordure 
+        // Draw border
         DrawCircleLines((int)corners[i].x, (int)corners[i].y, cfg.cornerRadius, WHITE);
             
-        // num Coin
+        // Draw corner number
         DrawText(TextFormat("%d", i),
                 (int)corners[i].x - 5,
-                (int)corners[i].y -10,
+                (int)corners[i].y - 10,
                 20, BLACK);
    }
 }
 
-RMAPI void RM_DrawCalibrationGrid(const RM_Calibration *calibration){
-    if (!calibration || !calibration->surface) return;
-    if (!calibration->config.showGrid) return;
+RMAPI void RM_DrawCalibrationGrid(RM_Calibration calibration){
+    if (!calibration.surface) return;
+    if (!calibration.enabled) return;
+    if (!calibration.config.showGrid) return;
 
-    RM_Quad quad = RM_GetQuad(calibration->surface);
-    RM_CalibrationConfig cfg = calibration->config;
+    RM_Quad quad = RM_GetQuad(calibration.surface);
+    RM_CalibrationConfig cfg = calibration.config;
 
-    // Horizontal
-    for (int x = 0; x < cfg.gridResolutionX; x++){
+    // Horizontal lines
+    for (int x = 0; x <= cfg.gridResolutionX; x++){
         float u = (float)x / (float)cfg.gridResolutionX;
 
-        // Vector top
         Vector2 top = Vector2Lerp(quad.topLeft, quad.topRight, u);
-
-        // Vector bottom
         Vector2 bottom = Vector2Lerp(quad.bottomLeft, quad.bottomRight, u);
 
         DrawLineV(top, bottom, cfg.gridColor);
     }
 
-    // Vertical
-    for (int y = 0; y < cfg.gridResolutionY; y++){
-        float v = (float)y/ (float)cfg.gridResolutionY;
+    // Vertical lines
+    for (int y = 0; y <= cfg.gridResolutionY; y++){
+        float v = (float)y / (float)cfg.gridResolutionY;
 
-        // Vector Right
         Vector2 right = Vector2Lerp(quad.topRight, quad.bottomRight, v);
-        // Vector Left
         Vector2 left = Vector2Lerp(quad.topLeft, quad.bottomLeft, v);
 
         DrawLineV(left, right, cfg.gridColor);
     }
 }
 
-RMAPI void RM_DrawCalibrationBorder(const RM_Calibration *calibration){
-    if (!calibration || !calibration->surface) return;
-    if (!calibration->config.showBorder) return;
+RMAPI void RM_DrawCalibrationBorder(RM_Calibration calibration){
+    if (!calibration.surface) return;
+    if (!calibration.enabled) return;
+    if (!calibration.config.showBorder) return;
 
-    RM_Quad quad = RM_GetQuad(calibration->surface);
-    Color borderColor = calibration->config.borderColor;
+    RM_Quad quad = RM_GetQuad(calibration.surface);
+    Color borderColor = calibration.config.borderColor;
 
     DrawLineEx(quad.topLeft, quad.topRight, 2.0f, borderColor);
     DrawLineEx(quad.topRight, quad.bottomRight, 2.0f, borderColor);
     DrawLineEx(quad.bottomRight, quad.bottomLeft, 2.0f, borderColor);
     DrawLineEx(quad.bottomLeft, quad.topLeft, 2.0f, borderColor);
-
 }
 
 RMAPI void RM_ResetQuad(RM_Surface *surface, int screenWidth, int screenHeight){
@@ -1165,25 +1178,26 @@ RMAPI void RM_ResetQuad(RM_Surface *surface, int screenWidth, int screenHeight){
     RM_SetQuad(surface, CenterQuad);
 }
 
-RMAPI int RM_GetActiveCorner(const RM_Calibration *calibration){
-    if (!calibration) return -1;
+RMAPI void RM_ResetCalibrationQuad(RM_Calibration *calibration, int screenWidth, int screenHeight){
+    if (!calibration || !calibration->surface) return;
 
-    return calibration->activeCorner;
+    RM_ResetQuad(calibration->surface, screenWidth, screenHeight);
+}
+
+RMAPI int RM_GetActiveCorner(RM_Calibration calibration){
+    return calibration.activeCorner;
 } 
 
-RMAPI bool RM_IsCalibrate(const RM_Calibration *calibration){
-    if (!calibration) return false;
-
-    return (calibration->activeCorner >= 0 && IsMouseButtonDown(MOUSE_BUTTON_LEFT));
+RMAPI bool RM_IsCalibrating(RM_Calibration calibration){
+    return (calibration.activeCorner >= 0 && IsMouseButtonDown(MOUSE_BUTTON_LEFT));
 }
 
 
-RMAPI RM_CalibrationConfig *RM_GetCalibrationConfig(RM_Calibration *calibration){
-    if (!calibration) return NULL;
 
-    return &calibration->config;
-}
 
+//---------------------------------------------------------------
+// IO
+//---------------------------------------------------------------
 
 RMAPI bool RM_SaveConfig(const RM_Surface *surface, const char *filepath){
     if (!surface || !filepath){

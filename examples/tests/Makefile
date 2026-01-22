@@ -20,9 +20,10 @@ LIBS = -lraylib -lm -lpthread -ldl
 #EXAMPLE = 12_perspective_mode
 #EXAMPLE = 13_mode_comparaison
 #EXAMPLE = 14_config_io
-#EXAMPLE = 14_test
+EXAMPLE = 14_test
 #EXAMPLE = 16_geometry_utils
-EXAMPLE = 17_point_mapping
+#EXAMPLE = 17_point_mapping
+#EXAMPLE = test
 
 
 

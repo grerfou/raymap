@@ -13,6 +13,10 @@ int main(void) {
     printf("  Test: Calibration Interactive\n");
     printf("═══════════════════════════════════════\n\n");
     
+    // ═══════════════════════════════════════════
+    // SETUP
+    // ═══════════════════════════════════════════
+    
     // Créer une surface
     RM_Surface *surface = RM_CreateSurface(500, 400, RM_MAP_BILINEAR);
     
@@ -25,19 +29,24 @@ int main(void) {
     };
     RM_SetQuad(surface, initialQuad);
     
-    // Créer la calibration
-    RM_Calibration *calibration = RM_CreateCalibration(surface);
+    //  NOUVEAU : Créer calibration (struct sur la stack, pas de malloc)
+    RM_Calibration calib = RM_CalibrationDefault(surface);
     
-    printf(" Surface créée\n");
-    printf(" Calibration créée\n\n");
+    printf("✓ Surface créée\n");
+    printf("✓ Calibration créée\n\n");
     
     printf("Contrôles:\n");
     printf("  CLIC GAUCHE : Sélectionner et déplacer un coin\n");
-    printf("  R          : Reset quad\n");
-    printf("  G          : Toggle grille\n");
-    printf("  B          : Toggle bordure\n");
-    printf("  C          : Toggle coins\n");
-    printf("  ESC        : Quitter\n\n");
+    printf("  TAB         : Toggle mode calibration\n");
+    printf("  R           : Reset quad\n");
+    printf("  G           : Toggle grille\n");
+    printf("  B           : Toggle bordure\n");
+    printf("  C           : Toggle coins\n");
+    printf("  ESC         : Quitter\n\n");
+    
+    // ═══════════════════════════════════════════
+    // MAIN LOOP
+    // ═══════════════════════════════════════════
     
     while (!WindowShouldClose()) {
         
@@ -45,37 +54,40 @@ int main(void) {
         // INPUTS
         // ═══════════════════════════════════════════
         
+        //  NOUVEAU : Toggle calibration avec TAB
+        if (IsKeyPressed(KEY_TAB)) {
+            RM_ToggleCalibration(&calib);
+            printf("✓ Calibration: %s\n", calib.enabled ? "ON" : "OFF");
+        }
+        
         // Reset quad
         if (IsKeyPressed(KEY_R)) {
             RM_SetQuad(surface, initialQuad);
-            printf(" Quad reset\n");
+            printf("✓ Quad reset\n");
         }
         
-        // Toggle options
-        RM_CalibrationConfig *config = RM_GetCalibrationConfig(calibration);
-        
+        // ✨ NOUVEAU : Accès direct à la config (struct publique)
         if (IsKeyPressed(KEY_G)) {
-            config->showGrid = !config->showGrid;
-            printf(" Grille: %s\n", config->showGrid ? "ON" : "OFF");
+            calib.config.showGrid = !calib.config.showGrid;
+            printf("✓ Grille: %s\n", calib.config.showGrid ? "ON" : "OFF");
         }
         
         if (IsKeyPressed(KEY_B)) {
-            config->showBorder = !config->showBorder;
-            printf(" Bordure: %s\n", config->showBorder ? "ON" : "OFF");
+            calib.config.showBorder = !calib.config.showBorder;
+            printf("✓ Bordure: %s\n", calib.config.showBorder ? "ON" : "OFF");
         }
         
         if (IsKeyPressed(KEY_C)) {
-            config->showCorners = !config->showCorners;
-            printf(" Coins: %s\n", config->showCorners ? "ON" : "OFF");
+            calib.config.showCorners = !calib.config.showCorners;
+            printf("✓ Coins: %s\n", calib.config.showCorners ? "ON" : "OFF");
         }
         
         // ═══════════════════════════════════════════
         // CALIBRATION UPDATE
         // ═══════════════════════════════════════════
         
-        RM_BeginCalibration(calibration);
-        RM_UpdateCalibration(calibration);  // ← Gestion du drag ici
-        RM_EndCalibration(calibration);
+        //  NOUVEAU : Une seule ligne suffit !
+        RM_UpdateCalibration(&calib);
         
         // ═══════════════════════════════════════════
         // DESSINER DANS LA SURFACE
@@ -111,27 +123,34 @@ int main(void) {
             // 1. Afficher la surface
             RM_DrawSurface(surface);
             
-            // 2. Afficher l'UI de calibration PAR-DESSUS
-            RM_DrawCalibration(calibration);
+            // 2.  NOUVEAU : Afficher calibration (pass by value)
+            RM_DrawCalibration(calib);
             
             // ═══════════════════════════════════════════
             // HUD
             // ═══════════════════════════════════════════
             
-            DrawRectangle(0, 0, 1280, 60, ColorAlpha(BLACK, 0.8f));
+            DrawRectangle(0, 0, 1280, 80, ColorAlpha(BLACK, 0.8f));
             DrawText("Test 08: Calibration Interactive", 20, 15, 24, LIME);
-            DrawText("🖱️  Cliquez et glissez les coins jaunes", 20, 40, 16, YELLOW);
             
-            // Info coin actif
-            if (calibration->activeCorner >= 0) {
+            //  NOUVEAU : Afficher état calibration
+            if (calib.enabled) {
+                DrawText("🖱️  MODE CALIBRATION - Cliquez et glissez les coins", 20, 45, 16, YELLOW);
+            } else {
+                DrawText("Press TAB to enter calibration mode", 20, 45, 16, GRAY);
+            }
+            
+            //  NOUVEAU : Accès direct au membre activeCorner
+            if (calib.enabled && calib.activeCorner >= 0) {
                 const char *cornerNames[] = {"TOP-LEFT", "TOP-RIGHT", "BOTTOM-RIGHT", "BOTTOM-LEFT"};
-                DrawText(TextFormat("Coin actif: %s", cornerNames[calibration->activeCorner]), 
+                DrawText(TextFormat("Coin actif: %s", cornerNames[calib.activeCorner]), 
                         1280 - 300, 15, 18, RED);
             }
             
             // Contrôles
-            DrawRectangle(0, 720 - 140, 320, 140, ColorAlpha(BLACK, 0.8f));
-            DrawText("Contrôles:", 10, 720 - 130, 18, YELLOW);
+            DrawRectangle(0, 720 - 160, 320, 160, ColorAlpha(BLACK, 0.8f));
+            DrawText("Contrôles:", 10, 720 - 150, 18, YELLOW);
+            DrawText("TAB: Toggle calibration", 10, 720 - 125, 14, LIGHTGRAY);
             DrawText("CLIC: Déplacer coin", 10, 720 - 105, 14, LIGHTGRAY);
             DrawText("R: Reset", 10, 720 - 85, 14, LIGHTGRAY);
             DrawText("G: Toggle grille", 10, 720 - 65, 14, LIGHTGRAY);
@@ -143,7 +162,7 @@ int main(void) {
         EndDrawing();
     }
     
-    RM_DestroyCalibration(calibration);
+    //  NOUVEAU : Pas de RM_DestroyCalibration() (struct sur stack)
     RM_DestroySurface(surface);
     CloseWindow();
     

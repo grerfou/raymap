@@ -466,4 +466,4 @@ chore:    Maintenance, build
 ---
 
 Dernière mise à jour : 2026-01-20  
-Version RayMap : 0.4.0 (Phase 1 complète, Phase 2 complète, Phase 3 complète, Phase 4 compléte, Phase 5 complete, Phase 6 compléte)
+Version RayMap : 0.4.0 (Phase 1 complète, Phase 2 complète, Phase 3 complète, Phase 4 compléte, Phase 5 complete, Phase 6 compléte&)

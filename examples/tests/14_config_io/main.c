@@ -26,7 +26,7 @@ int main(void) {
     printf("  Test 14: Configuration Save/Load\n");
     printf("═══════════════════════════════════════════════════════════\n\n");
     
-    // ✅ Initialiser Raylib EN PREMIER
+    //  Initialiser Raylib EN PREMIER
     InitWindow(1024, 768, "Test 14: Config Save/Load");
     SetTargetFPS(60);
     
@@ -60,13 +60,13 @@ int main(void) {
         FILE *check = fopen(filepath, "r");
         if (check) {
             fclose(check);
-            printf("  ✅ File created successfully\n\n");
+            printf("   File created successfully\n\n");
             passedTests++;
         } else {
-            printf("  ❌ File not created\n\n");
+            printf("   File not created\n\n");
         }
     } else {
-        printf("  ❌ Save failed\n\n");
+        printf("   Save failed\n\n");
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -84,33 +84,33 @@ int main(void) {
         RM_Quad loadedQuad = RM_GetQuad(surface2);
         
         if (QuadEquals(testQuad, loadedQuad, 0.1f)) {
-            printf("  ✅ Quad positions correct\n");
+            printf("   Quad positions correct\n");
             
             int cols, rows;
             RM_GetMeshResolution(surface2, &cols, &rows);
             
             if (cols == 24 && rows == 18) {
-                printf("  ✅ Mesh resolution correct\n");
+                printf("   Mesh resolution correct\n");
                 
                 RM_MapMode mode = RM_GetMapMode(surface2);
                 if (mode == RM_MAP_HOMOGRAPHY) {
-                    printf("  ✅ Mode correct\n\n");
+                    printf("   Mode correct\n\n");
                     passedTests++;
                 } else {
-                    printf("  ❌ Mode incorrect (expected HOMOGRAPHY)\n\n");
+                    printf("   Mode incorrect (expected HOMOGRAPHY)\n\n");
                 }
             } else {
-                printf("  ❌ Mesh resolution incorrect (%dx%d, expected 24x18)\n\n", cols, rows);
+                printf("   Mesh resolution incorrect (%dx%d, expected 24x18)\n\n", cols, rows);
             }
         } else {
-            printf("  ❌ Quad positions incorrect\n");
-            printf("     Expected TL: (%.1f, %.1f), Got: (%.1f, %.1f)\n", 
+            printf("   Quad positions incorrect\n");
+            printf("   Expected TL: (%.1f, %.1f), Got: (%.1f, %.1f)\n", 
                    testQuad.topLeft.x, testQuad.topLeft.y,
                    loadedQuad.topLeft.x, loadedQuad.topLeft.y);
             printf("\n");
         }
     } else {
-        printf("  ❌ Load failed\n\n");
+        printf("   Load failed\n\n");
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -125,10 +125,10 @@ int main(void) {
     bool invalidLoad = RM_LoadConfig(surface3, "nonexistent_file.txt");
     
     if (!invalidLoad) {
-        printf("  ✅ Invalid file handled gracefully (returned false)\n\n");
+        printf("   Invalid file handled gracefully (returned false)\n\n");
         passedTests++;
     } else {
-        printf("  ❌ Should return false for invalid file\n\n");
+        printf("   Should return false for invalid file\n\n");
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -183,13 +183,13 @@ int main(void) {
         fclose(file2);
         
         if (filesIdentical) {
-            printf("  ✅ Round-trip preserves configuration exactly\n\n");
+            printf("   Round-trip preserves configuration exactly\n\n");
             passedTests++;
         } else {
-            printf("  ❌ Configuration changed during round-trip\n\n");
+            printf("   Configuration changed during round-trip\n\n");
         }
     } else {
-        printf("  ❌ Could not open files for comparison\n\n");
+        printf("   Could not open files for comparison\n\n");
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -284,13 +284,13 @@ int main(void) {
     printf("Tests réussis: %d/%d\n\n", passedTests, totalTests);
     
     if (passedTests == totalTests) {
-        printf("✅ Tous les tests passés !\n");
+        printf(" Tous les tests passés !\n");
         printf("   - Save/Load fonctionne correctement\n");
         printf("   - Gestion d'erreurs OK\n");
         printf("   - Round-trip préserve les données\n");
         printf("   - Validation visuelle confirmée\n\n");
     } else {
-        printf("❌ Certains tests ont échoué (%d/%d)\n\n", totalTests - passedTests, totalTests);
+        printf(" Certains tests ont échoué (%d/%d)\n\n", totalTests - passedTests, totalTests);
     }
     
     return (passedTests == totalTests) ? 0 : 1;
