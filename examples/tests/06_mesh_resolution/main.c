@@ -18,8 +18,8 @@ int main(void) {
     RM_Quad trapeze = {
         { 100, 50 },
         { 1180, 80 },
-        { 50, 670 },
-        { 1230, 640 }
+        { 1230, 640 },
+        { 50, 670 }
     };
     RM_SetQuad(surface, trapeze);
     

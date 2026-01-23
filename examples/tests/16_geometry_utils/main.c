@@ -25,8 +25,8 @@ int main(void) {
     RM_Quad testQuad = {
         {100, 100},  // TL
         {500, 100},  // TR
-        {100, 400},  // BL
-        {500, 400}   // BR
+        {500, 400},   // BR
+        {100, 400}  // BL
     };
     
     Vector2 centerPoint = {300, 250};
@@ -107,8 +107,8 @@ int main(void) {
     RM_Quad trapezoid = {
         {200, 100},  // TL - étroit en haut
         {400, 100},  // TR
-        {100, 400},  // BL - large en bas
-        {500, 400}   // BR
+        {500, 400},   // BR
+        {100, 400}  // BL - large en bas
     };
     
     Vector2 insideTrap = {300, 250};
@@ -181,8 +181,8 @@ int main(void) {
     RM_Quad visualQuad = {
         {300, 200},
         {900, 250},
-        {250, 600},
-        {950, 550}
+        {950, 550},
+        {250, 600}
     };
     
     int testPointsInside = 0;

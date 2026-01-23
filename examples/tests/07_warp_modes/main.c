@@ -20,8 +20,8 @@ int main(void) {
     RM_Quad quad = {
         { 50, 50 },
         { 1230, 20 },
-        { 20, 700 },
-        { 1260, 670 }
+        { 1260, 670 },
+        { 20, 700 }
     };
     RM_SetQuad(surface, quad);
     

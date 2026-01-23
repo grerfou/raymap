@@ -43,10 +43,10 @@ int main(void) {
     RM_Surface *surface1 = RM_CreateSurface(800, 600, RM_MAP_HOMOGRAPHY);
     
     RM_Quad testQuad = {
-        {100, 50},
-        {700, 80},
-        {50, 550},
-        {750, 580}
+        {200, 100},
+        {600, 120},
+        {650, 480},
+        {150, 500}
     };
     
     RM_SetQuad(surface1, testQuad);
@@ -143,8 +143,8 @@ int main(void) {
     RM_Quad originalQuad = {
         {200, 100},
         {824, 120},
-        {180, 668},
-        {844, 648}
+        {844, 648},
+        {180, 668}
     };
     
     RM_SetQuad(surface4a, originalQuad);
@@ -207,8 +207,8 @@ int main(void) {
     RM_Quad visualQuad = {
         {150, 100},
         {850, 120},
-        {100, 650},
-        {900, 630}
+        {900, 630},
+        {100, 650}
     };
     
     RM_SetQuad(surfaceOriginal, visualQuad);

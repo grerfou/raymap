@@ -27,8 +27,8 @@ int main(void) {
     RM_Quad trapeze = {
         {200, 100},     // Top-left
         {1050, 80},     // Top-right
-        {150, 650},     // Bottom-left
-        {1100, 620}     // Bottom-right
+        {1100, 620},     // Bottom-right
+        {150, 650}     // Bottom-left
     };
     
     RM_SetQuad(surface, trapeze);

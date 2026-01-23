@@ -21,8 +21,8 @@ int main(void) {
     RM_Quad initialQuad = {
         { 200, 150 },
         { 1080, 150 },
-        { 200, 570 },
-        { 1080, 570 }
+        { 1080, 570 },
+        { 200, 570 }
     };
     RM_SetQuad(surface, initialQuad);
     

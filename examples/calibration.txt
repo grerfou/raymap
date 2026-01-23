@@ -13,8 +13,7 @@ columns=32
 rows=32
 
 [Quad]
-topLeft=751.00, 431.00
-topRight=1600.00, 180.00
-bottomLeft=739.00, 859.00
-bottomRight=1600.00, 900.00
-
+topLeft=0.00,0.00
+topRight=1280.00,0.00
+bottomRight=1280.00,720.00
+bottomLeft=0.00,720.00

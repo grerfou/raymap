@@ -60,8 +60,8 @@ int main(void) {
     RM_Quad rectQuad = {
         {0, 0},
         {400, 0},
-        {0, 300},
-        {400, 300}
+        {400, 300},
+        {0, 300}
     };
 
     RM_SetQuad(surface1, rectQuad);
@@ -131,8 +131,8 @@ int main(void) {
     RM_Quad trapeze = {
         {100, 150},
         {700, 100},
-        {50, 800},
-        {750, 750}
+        {750, 750},
+        {50, 800}
     };
     
     RM_SetQuad(surface2, trapeze);
@@ -182,15 +182,15 @@ int main(void) {
     Vector2 test_points[4] = {
         {0, 0},   // Top-left (normalized)
         {1, 0},   // Top-right
-        {0, 1},   // Bottom-left
-        {1, 1}    // Bottom-right
+        {1, 1},    // Bottom-right
+        {0, 1}   // Bottom-left
     };
     
     Vector2 expected[4] = {
         trapeze.topLeft,
         trapeze.topRight,
-        trapeze.bottomLeft,
-        trapeze.bottomRight
+        trapeze.bottomRight,
+        trapeze.bottomLeft
     };
     
     bool test3_passed = true;
@@ -337,16 +337,16 @@ int main(void) {
     RM_Quad visualQuad1 = {
         {100, 150},
         {600, 100},
-        {50, 570},
-        {650, 520}
+        {650, 520},
+        {50, 570}
     };
     RM_SetQuad(surfaceMesh, visualQuad1);
     
     RM_Quad visualQuad2 = {
         {700, 150},
         {1200, 100},
-        {650, 570},
-        {1250, 520}
+        {1250, 520},
+        {650, 570}
     };
     RM_SetQuad(surfacePersp, visualQuad2);
     

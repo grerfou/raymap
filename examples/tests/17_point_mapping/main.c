@@ -29,8 +29,8 @@ int main(void) {
     RM_Quad quadHomo = {
         {200, 100},
         {600, 120},
-        {150, 500},
-        {650, 480}
+        {650, 480},
+        {150, 500}
     };
     
     RM_SetQuad(surfaceHomo, quadHomo);
@@ -74,8 +74,8 @@ int main(void) {
     Vector2 bilinear_center = rm_BilinearInterpolation(
         quadHomo.topLeft,
         quadHomo.topRight,
-        quadHomo.bottomLeft,
         quadHomo.bottomRight,
+        quadHomo.bottomLeft,
         0.5f, 0.5f
     );
     
@@ -238,8 +238,8 @@ int main(void) {
     RM_Quad quadBilinear = {
         {900, 100},
         {1300, 120},
+        {1350, 480},
         {850, 500},
-        {1350, 480}
     };
     
     RM_SetQuad(surfaceBilinear, quadBilinear);

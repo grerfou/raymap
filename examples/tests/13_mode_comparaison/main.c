@@ -243,15 +243,15 @@ int main(void) {
     RM_Quad quadLeft = {
         {250, 100},    // TL - étroit en haut
         {550, 100},    // TR
+        {800, 850},     // BR
         {0, 850},      // BL - large en bas
-        {800, 850}     // BR
     };
     
     RM_Quad quadRight = {
         {1050, 100},   // TL
         {1350, 100},   // TR
-        {800, 850},    // BL
-        {1600, 850}    // BR
+        {1600, 850},    // BR
+        {800, 850}    // BL
     };
     
     RM_SetQuad(surfaceBilinear, quadLeft);

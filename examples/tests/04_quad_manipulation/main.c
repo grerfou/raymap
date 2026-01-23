@@ -33,8 +33,8 @@ int main(void) {
     RM_Quad trapeze = {
         { 150, 100 },   // Top-left
         { 650, 80 },    // Top-right (décalé)
-        { 100, 500 },   // Bottom-left
-        { 700, 520 }    // Bottom-right
+        { 700, 520 },    // Bottom-right
+        { 100, 500 }   // Bottom-left
     };
     RM_SetQuad(surface, trapeze);
     
@@ -60,8 +60,8 @@ int main(void) {
             RM_Quad animated = {
                 { 150 + offset, 100 },
                 { 650 - offset, 80 },
-                { 100, 500 },
-                { 700, 520 }
+                { 700, 520 },
+                { 100, 500 }
             };
             RM_SetQuad(surface, animated);
         }

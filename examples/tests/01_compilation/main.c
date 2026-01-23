@@ -3,6 +3,6 @@
 #include <stdio.h>
 
 int main(void) {
-    printf("\ncomplile ?\n");
+    printf("Complile !!\n");
     return 0;
 }

@@ -7,7 +7,7 @@ LIBS = -lraylib -lm -lpthread -ldl
 # Exemple à compiler
 
 #EXAMPLE = 01_compilation
-#EXAMPLE = 02_surface_lifecycle
+EXAMPLE = 02_surface_lifecycle
 #EXAMPLE = 03_simple_render
 #EXAMPLE = 04_quad_manipulation
 #EXAMPLE = 05_mesh_subdivision
@@ -20,12 +20,13 @@ LIBS = -lraylib -lm -lpthread -ldl
 #EXAMPLE = 12_perspective_mode
 #EXAMPLE = 13_mode_comparaison
 #EXAMPLE = 14_config_io
-EXAMPLE = 14_test
+#EXAMPLE = 14_test
 #EXAMPLE = 16_geometry_utils
 #EXAMPLE = 17_point_mapping
 #EXAMPLE = test
 
 
+# Future commit --> git commity -m "fix: Replace printf with TraceLog, add RM_IsQuadValid + refactor: cleaning and program commentary"
 
 
 SRC = $(EXAMPLE)/main.c

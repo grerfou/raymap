@@ -18,8 +18,8 @@ int main(void) {
     RM_Quad trapeze = {
         { 100, 50 },    // Top-left
         { 700, 80 },    // Top-right (décalé)
-        { 50, 670 },    // Bottom-left
-        { 750, 640 }    // Bottom-right
+        { 750, 640 },    // Bottom-right
+        { 50, 670 }    // Bottom-left
     };
     RM_SetQuad(surface, trapeze);
     
@@ -57,8 +57,8 @@ int main(void) {
             RM_Quad reset = {
                 { 440, 210 },   // Centré dans 1280x720
                 { 840, 210 },
-                { 440, 510 },
-                { 840, 510 }
+                { 840, 510 },
+                { 440, 510 }
             };
             RM_SetQuad(surface, reset);
             printf(" Quad reset (rectangle)\n");
@@ -69,8 +69,8 @@ int main(void) {
             RM_Quad trap = {
                 { 200, 100 },
                 { 1080, 50 },
-                { 100, 670 },
-                { 1180, 620 }
+                { 1180, 620 },
+                { 100, 670 }
             };
             RM_SetQuad(surface, trap);
             printf(" Trapèze prononcé\n");
@@ -90,8 +90,8 @@ int main(void) {
             RM_Quad animated = {
                 { 200 + offset, 100 },
                 { 1080 - offset, 50 },
-                { 100, 670 },
-                { 1180, 620 }
+                { 1180, 620 },
+                { 100, 670 }
             };
             RM_SetQuad(surface, animated);
         }
