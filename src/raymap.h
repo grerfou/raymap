@@ -38,6 +38,7 @@
 #include "raymath.h"
 #include "rlgl.h"
 #include <stdbool.h>
+#include <stdint.h>
 
 //--------------------------------------------------------------------------------------------
 // Defines and Macros
@@ -126,7 +127,8 @@ RMAPI void RM_BeginSurface(RM_Surface *surface);
 RMAPI void RM_EndSurface(RM_Surface *surface);
 
 // Draw the warped surface to screen
-RMAPI void RM_DrawSurface(const RM_Surface *surface);
+// Note: Not const because it may trigger lazy mesh update
+RMAPI void RM_DrawSurface(RM_Surface *surface);
 
 // Set mapping mode (bilinear/homography)
 RMAPI void RM_SetMapMode(RM_Surface *surface, RM_MapMode mode);
@@ -278,6 +280,74 @@ struct RM_Surface {
     Matrix3x3 homography;           // Cached homography matrix
     bool homographyNeedsUpdate;     // Dirty flag for homography
 };
+
+//-------------------------------------------------------------------------------------------
+// Internal Helper Fuinctions - Memory Management
+//-------------------------------------------------------------------------------------------
+
+// Centralized mesh cleanup to prevents memomy leak
+static void rm_CleanupMeshMemory(Mesh *mesh){
+    if (!mesh) return;
+
+    if (mesh->vertices){
+        RMFREE(mesh->vertices);
+        mesh->vertices = NULL;
+    }
+
+    if (mesh->texcoords){
+        RMFREE(mesh->texcoords);
+        mesh->texcoords = NULL;
+    }
+
+    if (mesh->normals){
+        RMFREE(mesh->normals);
+        mesh->normals = NULL;
+    }
+
+    if (mesh->indices){
+        RMFREE(mesh->indices);
+        mesh->indices = NULL;
+    }
+
+    mesh->vertexCount = 0;
+    mesh->triangleCount = 0;
+}
+
+// Safe mesh alloc with auto cleanup on failure
+static bool rm_AllocateMeshMemory(Mesh *mesh, int vertexCount, int triangleCount){
+    if (!mesh) return false;
+
+    // Init to NULL for safe clean
+    mesh->vertices = NULL;
+    mesh->texcoords = NULL;
+    mesh->normals = NULL;
+    mesh->indices = NULL;
+    mesh->vertexCount = vertexCount;
+    mesh->triangleCount = triangleCount;
+
+    // Alloc vertices
+    mesh->vertices = (float *)RMCALLOC(vertexCount * 3, sizeof(float));
+    if (!mesh->vertices) goto cleanup_failure;
+
+    // Alloc texcoords
+    mesh->texcoords = (float *)RMCALLOC(vertexCount * 2, sizeof(float));
+    if (!mesh->texcoords) goto cleanup_failure;
+
+    // Alloc normals
+    mesh->normals = (float *)RMCALLOC(vertexCount * 3, sizeof(float));
+    if (!mesh->normals) goto cleanup_failure;
+
+    // Alloc indices
+    mesh->indices = (unsigned short *)RMCALLOC(triangleCount * 3, sizeof(unsigned short));
+    if (!mesh->indices) goto cleanup_failure;
+
+    return true;
+
+cleanup_failure : 
+    TraceLog(LOG_ERROR, "RAYMAP: Failed to allocate mesh memory");
+    rm_CleanupMeshMemory(mesh);
+    return false;
+}
 
 //--------------------------------------------------------------------------------------------
 // Internal Helper Functions - Geometry
@@ -632,32 +702,29 @@ static void rm_GenerateBilinearMesh(RM_Surface *surface, int cols, int rows)
     }
     
     // Calculate dimensions
-    int vertexCount = (cols + 1) * (rows + 1);
-    int triangleCount = cols * rows * 2;
+    if (cols > 256 || rows > 256){
+        TraceLog(LOG_ERROR, "RAYMAP: Mesh resolution too hight [%dx%d > 256x256]", cols, rows);
+        return;
+    }
+    
+    size_t vertexCount = (cols + 1) * (rows + 1);
+    size_t triangleCount = cols * rows * 2;
+
+    // Check if index buffer can handle vertex count
+    if (vertexCount > UINT16_MAX){
+        TraceLog(LOG_ERROR, "RAYMAP: Too many vertices (%zu > %d) for index buffer", vertexCount, UINT16_MAX);
+        return;
+    }
     
     TraceLog(LOG_DEBUG, "RAYMAP: Generating mesh [%dx%d = %d vertices, %d triangles]",
              cols, rows, vertexCount, triangleCount);
     
-    // Allocate mesh
-    Mesh mesh = { 0 };
-    mesh.vertexCount = vertexCount;
-    mesh.triangleCount = triangleCount;
-    
-    mesh.vertices = (float *)RMCALLOC(vertexCount * 3, sizeof(float));
-    mesh.texcoords = (float *)RMCALLOC(vertexCount * 2, sizeof(float));
-    mesh.normals = (float *)RMCALLOC(vertexCount * 3, sizeof(float));
-    mesh.indices = (unsigned short *)RMCALLOC(triangleCount * 3, sizeof(unsigned short));
-    
-    // Verify allocation
-    if (!mesh.vertices || !mesh.texcoords || !mesh.normals || !mesh.indices) {
-        TraceLog(LOG_ERROR, "RAYMAP: Failed to allocate mesh memory");
-        if (mesh.vertices) RMFREE(mesh.vertices);
-        if (mesh.texcoords) RMFREE(mesh.texcoords);
-        if (mesh.normals) RMFREE(mesh.normals);
-        if (mesh.indices) RMFREE(mesh.indices);
-        return;
+    // Allocate new mesh
+    Mesh newMesh = { 0 };
+    if (!rm_AllocateMeshMemory(&newMesh, (int)vertexCount, (int)triangleCount)){
+        return; // Error already logged
     }
-    
+
     // Compute homography if needed
     RM_Quad q = surface->quad;
     if (surface->mode == RM_MAP_HOMOGRAPHY && surface->homographyNeedsUpdate) {
@@ -685,18 +752,18 @@ static void rm_GenerateBilinearMesh(RM_Surface *surface, int cols, int rows)
             }
             
             // Vertex position
-            mesh.vertices[vIdx * 3 + 0] = pos.x;
-            mesh.vertices[vIdx * 3 + 1] = pos.y;
-            mesh.vertices[vIdx * 3 + 2] = 0.0f;
+            newMesh.vertices[vIdx * 3 + 0] = pos.x;
+            newMesh.vertices[vIdx * 3 + 1] = pos.y;
+            newMesh.vertices[vIdx * 3 + 2] = 0.0f;
             
             // Texture coordinates
-            mesh.texcoords[vIdx * 2 + 0] = u;
-            mesh.texcoords[vIdx * 2 + 1] = 1.0f - v;  // Flip V for raylib
+            newMesh.texcoords[vIdx * 2 + 0] = u;
+            newMesh.texcoords[vIdx * 2 + 1] = 1.0f - v;  // Flip V for raylib
             
             // Normals (all pointing towards +Z)
-            mesh.normals[vIdx * 3 + 0] = 0.0f;
-            mesh.normals[vIdx * 3 + 1] = 0.0f;
-            mesh.normals[vIdx * 3 + 2] = 1.0f;
+            newMesh.normals[vIdx * 3 + 0] = 0.0f;
+            newMesh.normals[vIdx * 3 + 1] = 0.0f;
+            newMesh.normals[vIdx * 3 + 2] = 1.0f;
             
             vIdx++;
         }
@@ -712,44 +779,43 @@ static void rm_GenerateBilinearMesh(RM_Surface *surface, int cols, int rows)
             int bottomRight = bottomLeft + 1;
             
             // First triangle
-            mesh.indices[iIdx++] = topLeft;
-            mesh.indices[iIdx++] = topRight;
-            mesh.indices[iIdx++] = bottomLeft;
+            newMesh.indices[iIdx++] = (unsigned short)topLeft;
+            newMesh.indices[iIdx++] = (unsigned short)topRight;
+            newMesh.indices[iIdx++] = (unsigned short)bottomLeft;
             
             // Second triangle
-            mesh.indices[iIdx++] = topRight;
-            mesh.indices[iIdx++] = bottomRight;
-            mesh.indices[iIdx++] = bottomLeft;
+            newMesh.indices[iIdx++] = (unsigned short)topRight;
+            newMesh.indices[iIdx++] = (unsigned short)bottomRight;
+            newMesh.indices[iIdx++] = (unsigned short)bottomLeft;
         }
     }
     
     // Upload to GPU
-    UploadMesh(&mesh, false);
-    
-    if (mesh.vboId[0] == 0) {
+    UploadMesh(&newMesh, false);
+
+    // CRITICAL : Check upload succeeded BEFORE destroying old
+    if (newMesh.vboId[0] == 0){
         TraceLog(LOG_ERROR, "RAYMAP: Failed to upload mesh to GPU");
-        RMFREE(mesh.vertices);
-        RMFREE(mesh.texcoords);
-        RMFREE(mesh.normals);
-        RMFREE(mesh.indices);
-        return;
+        rm_CleanupMeshMemory(&newMesh); // Clean up the failed mesh
+        return; // keep old mesh
     }
-    
-    // Replace existing mesh
-    if (surface->mesh.vertices) {
+
+    // Upload succeeded -> safge destroy old mesh
+    if (surface->mesh.vertices){
         UnloadMesh(surface->mesh);
         TraceLog(LOG_DEBUG, "RAYMAP: Old mesh unloaded");
     }
     
-    surface->mesh = mesh;
+    // replace newMesh
+    surface->mesh = newMesh;
     surface->meshNeedsUpdate = false;
     
     TraceLog(LOG_INFO, "RAYMAP: Mesh generated successfully [%d vertices, %d triangles]",
-             vertexCount, triangleCount);
+             newMesh.vertexCount, newMesh.triangleCount);
 }
 
 // Update mesh if dirty flag is set
-static void rm_UpdateMesh(RM_Surface *surface)
+static void rm_EnsureMeshUpdated(RM_Surface *surface)
 {
     if (!surface) {
         TraceLog(LOG_WARNING, "RAYMAP: Cannot update NULL surface mesh");
@@ -760,7 +826,7 @@ static void rm_UpdateMesh(RM_Surface *surface)
         return;
     }
     
-    TraceLog(LOG_DEBUG, "RAYMAP: Updating mesh...");
+    TraceLog(LOG_DEBUG, "RAYMAP: Lazy mesh update triggered");
     rm_GenerateBilinearMesh(surface, surface->meshColumns, surface->meshRows);
 }
 
@@ -824,14 +890,24 @@ RMAPI RM_Surface *RM_CreateSurface(int width, int height, RM_MapMode mode)
     }
     SetMaterialTexture(&surface->material, MATERIAL_MAP_DIFFUSE, surface->target.texture);
     
-    // Generate mesh
-    rm_UpdateMesh(surface);
+    // Generate initial mesh
+    rm_GenerateBilinearMesh(surface, surface->meshColumns, surface->meshRows);
     
-    // Final verification
-    if (surface->mesh.vertices == NULL) {
-        TraceLog(LOG_ERROR, "RAYMAP: Failed to generate mesh");
-        UnloadMaterial(surface->material);
-        UnloadRenderTexture(surface->target);
+    // CRITICAL : Verify mesh was created succefully
+    if (!surface->mesh.vertices || surface->mesh.vboId[0] == 0){
+        TraceLog(LOG_ERROR, "RAYMAP: Failed to generate initial mesh");
+
+        // cleanup reverse order of creation
+        if (surface->material.shader.id > 0){
+            UnloadMaterial(surface->material);
+        }
+        if (surface->target.id > 0){
+            UnloadRenderTexture(surface->target);
+        }
+        if (surface->mesh.vertices){
+            rm_CleanupMeshMemory(&surface->mesh);
+        }
+
         RMFREE(surface);
         return NULL;
     }
@@ -851,23 +927,21 @@ RMAPI void RM_DestroySurface(RM_Surface *surface)
         return;
     }
     
-    // Unload GPU resources
+    // Unload in reverse order of creation
+    if (surface->mesh.vertices != NULL) {
+        UnloadMesh(surface->mesh);
+        TraceLog(LOG_DEBUG, "RAYMAP: Mesh unloaded");
+    }
     if (surface->material.shader.id > 0) {
         UnloadMaterial(surface->material);
         TraceLog(LOG_DEBUG, "RAYMAP: Material unloaded");
     }
-    
     if (surface->target.id > 0) {
         UnloadRenderTexture(surface->target);
         TraceLog(LOG_DEBUG, "RAYMAP: RenderTexture unloaded");
     }
     
-    if (surface->mesh.vertices != NULL) {
-        UnloadMesh(surface->mesh);
-        TraceLog(LOG_DEBUG, "RAYMAP: Mesh unloaded");
-    }
-    
-    // Free CPU memory
+    // Free surface struct
     RMFREE(surface);
     
     TraceLog(LOG_INFO, "RAYMAP: Surface destroyed");
@@ -966,17 +1040,15 @@ RMAPI void RM_EndSurface(RM_Surface *surface)
     EndTextureMode();
 }
 
-RMAPI void RM_DrawSurface(const RM_Surface *surface)
+RMAPI void RM_DrawSurface(RM_Surface *surface)
 {
     if (!surface) {
         TraceLog(LOG_WARNING, "RAYMAP: Attempted to draw NULL surface");
         return;
     }
     
-    // Update mesh if needed
-    if (surface->meshNeedsUpdate) {
-        rm_UpdateMesh((RM_Surface *)surface);
-    }
+    // Lazy update : regenerate mesh if dirty flag is set
+    rm_EnsureMeshUpdated(surface);
     
     // Validate mesh
     if (!surface->mesh.vertices) {
