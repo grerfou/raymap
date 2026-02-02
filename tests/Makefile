@@ -1,7 +1,7 @@
 # Compiler
 CC = gcc
 CFLAGS = -Wall -Wextra -std=c99
-INCLUDES = -I./../../src
+INCLUDES = -I./../src
 LIBS = -lraylib -lm -lpthread -ldl
 
 # Build modes
