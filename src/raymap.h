@@ -260,6 +260,8 @@ RMAPI Mesh *RM_GetSurfaceMesh(RM_Surface *surface);
 // Internal Types and Structures
 //--------------------------------------------------------------------------------------------
 
+#define RM_EPSILON 1e-4f
+
 // 3x3 Matrix for homography transformations
 typedef struct {
     float m[3][3];
@@ -520,7 +522,7 @@ static int rm_GaussSolve8x8(float A[8][8], float b[8], float x[8])
         }
         
         // Check for singularity
-        if (max_val < 1e-10f) {
+        if (max_val < RM_EPSILON * 0.01f) {
             return -1;
         }
         
@@ -547,7 +549,7 @@ static int rm_GaussSolve8x8(float A[8][8], float b[8], float x[8])
     }
     
     // Check final pivot
-    if (fabsf(A_copy[7][7]) < 1e-10f) {
+    if (fabsf(A_copy[7][7]) < RM_EPSILON * 0.01f) {
         return -1;
     }
     
@@ -654,7 +656,7 @@ static Vector2 rm_ApplyHomography(Matrix3x3 H, float u, float v)
     float y = H.m[1][0] * u + H.m[1][1] * v + H.m[1][2];
     float w = H.m[2][0] * u + H.m[2][1] * v + H.m[2][2];
     
-    if (fabsf(w) > 1e-6f) {
+    if (fabsf(w) > RM_EPSILON) {
         x /= w;
         y /= w;
     }
