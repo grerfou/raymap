@@ -1,4 +1,4 @@
-# 📖 RayMap API Reference v1.0.0
+#  RayMap API Reference v1.0.0
 
 **Complete technical documentation for all RayMap functions**
 

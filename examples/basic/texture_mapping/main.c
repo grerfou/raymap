@@ -134,7 +134,7 @@ int main(void)
         
         // Update rotation
         if (animateRotation) {
-            rotation += 30.0f * GetFrameTime();
+            rotation += 00.0f * GetFrameTime();
         }
         
         //----------------------------------------------------------------------------------

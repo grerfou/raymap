@@ -108,14 +108,8 @@ int main(void)
 ##  Examples
 
 ### Basic Usage
-- [`examples/basic/`](examples/basic/) - Simple projection mapping
-- [`examples/calibration/`](examples/calibration/) - Interactive calibration
-
-### Advanced
-- [`examples/multi_mapping/`](examples/multi_mapping/) - Multiple surfaces simultaneously
-  -  **Perfect for multi-projector installations**
-  -  Independent content per surface
-  -  Per-surface calibration
+- [`examples/basic/simple_mapping`](examples/basic/simple_mapping) - Simple projection mapping
+- [`examples/basic/interactive_calibration/`](examples/basic/interactive_calibration) - Interactive calibration
 
 ---
 
