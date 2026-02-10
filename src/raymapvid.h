@@ -53,11 +53,6 @@
     #define RMVAPI extern
 #endif
 
-// Version
-#define RAYMAPVID_VERSION_MAJOR 0
-#define RAYMAPVID_VERSION_MINOR 1
-#define RAYMAPVID_VERSION_PATCH 0
-
 //--------------------------------------------------------------------------------------------
 // Types and Structures (OPAQUE)
 //--------------------------------------------------------------------------------------------
@@ -105,29 +100,26 @@ typedef struct {
 } RMV_VideoInfo;
 
 //--------------------------------------------------------------------------------------------
-// Function Declarations (API - NOT IMPLEMENTED YET)
+// Function Declarations (API)
 //--------------------------------------------------------------------------------------------
 
-// NOTE: These are declarations only for Étape 1.1
-// Implementation will come in future steps
-
-// Load/Unload (Étape 1.2)
+// Load/Unload 
 RMVAPI RMV_Video *RMV_LoadVideo(const char *filepath);
 RMVAPI void RMV_UnloadVideo(RMV_Video *video);
 
-// Metadata (Étape 1.3)
+// Metadata
 RMVAPI RMV_VideoInfo RMV_GetVideoInfo(const RMV_Video *video);
 
-// Texture access (Étape 1.4)
+// Texture access
 RMVAPI Texture2D RMV_GetVideoTexture(const RMV_Video *video);
 
-// Playback control (Phase 2)
+// Playback control
 RMVAPI void RMV_UpdateVideo(RMV_Video *video, float deltaTime);
 RMVAPI void RMV_PlayVideo(RMV_Video *video);
 RMVAPI void RMV_PauseVideo(RMV_Video *video);
 RMVAPI void RMV_StopVideo(RMV_Video *video);
 
-// State query (Phase 2)
+// State query
 RMVAPI RMV_PlaybackState RMV_GetVideoState(const RMV_Video *video);
 RMVAPI bool RMV_IsVideoPlaying(const RMV_Video *video);
 RMVAPI bool RMV_IsVideoLoaded(const RMV_Video *video);
@@ -157,66 +149,431 @@ RMVAPI bool RMV_IsVideoLoaded(const RMV_Video *video);
 #include <stdlib.h>
 #include <string.h>
 
+// FFMPEG includes
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+#include <libavutil/avutil.h>
+#include <libavutil/imgutils.h>
+#include <libswscale/swscale.h>
+
 //--------------------------------------------------------------------------------------------
-// Internal Structure (HIDDEN FROM USER)
+// Memory Management
+//--------------------------------------------------------------------------------------------
+
+#ifndef RMVMALLOC
+    #define RMVMALLOC(size) malloc(size)
+#endif
+#ifndef RMVCALLOC
+    #define RMVCALLOC(n, size) calloc(n, size)
+#endif
+#ifndef RMVFREE
+    #define RMVFREE(ptr) free(ptr)
+#endif
+
+//--------------------------------------------------------------------------------------------
+// Internal Structure
 //--------------------------------------------------------------------------------------------
 
 struct RMV_Video {
-    // This is just a placeholder structure for Étape 1.1
-    // Real implementation will come in Étape 1.2
-    int dummy;  // Prevents empty struct warning
+    // FFMPEG context
+    AVFormatContext *formatCtx;
+    AVCodecContext *codecCtx;
+    const AVCodec *codec;
+    AVFrame *frame;
+    AVFrame *frameRGB;
+    AVPacket *packet;
+    struct SwsContext *swsCtx;
+
+    // Strean info
+    int videoStreamIndex;
+
+    // raylib texture
+    Texture2D texture;
+    uint8_t *rgbBuffer;
+
+    // Video Metadata
+    int width;
+    int height;
+    float duration;
+    float fps;
+    const char *codecName;
+    const char *formatName;
+    bool hasAudio;
+
+    // State flags
+    bool isLoaded;
 };
 
+
 //--------------------------------------------------------------------------------------------
-// Stub Implementations (NOT FUNCTIONAL YET)
+// Internal Helper Functions
 //--------------------------------------------------------------------------------------------
 
-// These are stubs that return NULL/defaults for compilation testing only
-// Real implementation comes in later steps
+// Cleanup function -> free ressources 
+// Cleanup function - frees all resources in proper order
+static void rmv_CleanupVideo(RMV_Video *video) {
+    if (!video) return;
+    
+    // Mark as not loaded first
+    video->isLoaded = false;
+    
+    // Free RGB buffer
+    if (video->rgbBuffer) {
+        av_free(video->rgbBuffer);
+        video->rgbBuffer = NULL;
+    }
+    
+    // Unload Raylib texture
+    if (video->texture.id > 0) {
+        UnloadTexture(video->texture);
+        video->texture.id = 0;
+    }
+    
+    // Free swscale context
+    if (video->swsCtx) {
+        sws_freeContext(video->swsCtx);
+        video->swsCtx = NULL;
+    }
+    
+    // Free frames
+    if (video->frameRGB) {
+        av_frame_free(&video->frameRGB);
+        // av_frame_free() sets pointer to NULL automatically
+    }
+    
+    if (video->frame) {
+        av_frame_free(&video->frame);
+        // av_frame_free() sets pointer to NULL automatically
+    }
+    
+    // Free packet
+    if (video->packet) {
+        av_packet_free(&video->packet);
+        // av_packet_free() sets pointer to NULL automatically
+    }
+    
+    // Free codec context
+    if (video->codecCtx) {
+        avcodec_free_context(&video->codecCtx);
+        // avcodec_free_context() sets pointer to NULL automatically
+    }
+    
+    // Close format context
+    if (video->formatCtx) {
+        avformat_close_input(&video->formatCtx);
+        // avformat_close_input() sets pointer to NULL automatically
+    }
+}
+
+//--------------------------------------------------------------------------------------------
+// Public API
+//--------------------------------------------------------------------------------------------
 
 RMVAPI RMV_Video *RMV_LoadVideo(const char *filepath) {
-    (void)filepath;  // Unused parameter
-    TraceLog(LOG_WARNING, "RAYMAPVID: RMV_LoadVideo() not implemented yet (Étape 1.2)");
-    return NULL;
+    // Validate input
+    if (!filepath) {
+        TraceLog(LOG_ERROR, "RAYMAPVID: NULL filepath provided");
+        return NULL;
+    }
+
+    // Allocate video structure
+    RMV_Video *video = (RMV_Video *)RMVCALLOC(1, sizeof(RMV_Video));
+    if (!video) {
+        TraceLog(LOG_ERROR, "RAYMAPVID: Failed to allocate video structure");
+        return NULL;
+    }
+
+    // Open video file
+    video->formatCtx = NULL;
+    if (avformat_open_input(&video->formatCtx, filepath, NULL, NULL) != 0) {
+        TraceLog(LOG_ERROR, "RAYMAPVID: Could not open file '%s'", filepath);
+        RMVFREE(video);
+        return NULL;
+    }
+
+    // Retrieve stream information
+    if (avformat_find_stream_info(video->formatCtx, NULL) < 0) {
+        TraceLog(LOG_ERROR, "RAYMAPVID: Could not find stream information");
+        avformat_close_input(&video->formatCtx);
+        RMVFREE(video);
+        return NULL;
+    }
+
+    // Find video stream
+    video->videoStreamIndex = -1;
+    for (unsigned int i = 0; i < video->formatCtx->nb_streams; i++) {
+        if (video->formatCtx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
+            video->videoStreamIndex = i;
+            break;
+        }
+    }
+
+    if (video->videoStreamIndex == -1) {
+        TraceLog(LOG_ERROR, "RAYMAPVID: No video stream found");
+        avformat_close_input(&video->formatCtx);
+        RMVFREE(video);
+        return NULL;
+    }
+
+    // Get codec parameters
+    AVCodecParameters *codecParams = video->formatCtx->streams[video->videoStreamIndex]->codecpar;
+
+    // Find decoder
+    video->codec = avcodec_find_decoder(codecParams->codec_id);
+    if (!video->codec) {
+        TraceLog(LOG_ERROR, "RAYMAPVID: Unsupported codec");
+        avformat_close_input(&video->formatCtx);
+        RMVFREE(video);
+        return NULL;
+    }
+
+    // Allocate codec context
+    video->codecCtx = avcodec_alloc_context3(video->codec);
+    if (!video->codecCtx) {
+        TraceLog(LOG_ERROR, "RAYMAPVID: Failed to allocate codec context");
+        avformat_close_input(&video->formatCtx);
+        RMVFREE(video);
+        return NULL;
+    }
+
+    // Copy codec parameters to context
+    if (avcodec_parameters_to_context(video->codecCtx, codecParams) < 0) {
+        TraceLog(LOG_ERROR, "RAYMAPVID: Failed to copy codec parameters");
+        avcodec_free_context(&video->codecCtx);
+        avformat_close_input(&video->formatCtx);
+        RMVFREE(video);
+        return NULL;
+    }
+
+    // Open codec
+    if (avcodec_open2(video->codecCtx, video->codec, NULL) < 0) {
+        TraceLog(LOG_ERROR, "RAYMAPVID: Could not open codec");
+        avcodec_free_context(&video->codecCtx);
+        avformat_close_input(&video->formatCtx);
+        RMVFREE(video);
+        return NULL;
+    }
+
+    // Log codec info
+    TraceLog(LOG_INFO, "RAYMAPVID: Codec opened: %s", avcodec_get_name(codecParams->codec_id));
+    TraceLog(LOG_INFO, "RAYMAPVID: Dimensions: %dx%d", video->codecCtx->width, video->codecCtx->height);
+    TraceLog(LOG_INFO, "RAYMAPVID: Pixel format: %s (%d)",
+             av_get_pix_fmt_name(video->codecCtx->pix_fmt),
+             video->codecCtx->pix_fmt);
+
+    // Extract video info
+    video->width = video->codecCtx->width;
+    video->height = video->codecCtx->height;
+
+    // Validate dimensions
+    if (video->width <= 0 || video->height <= 0 ||
+        video->width > 8192 || video->height > 8192) {
+        TraceLog(LOG_ERROR, "RAYMAPVID: Invalid dimensions: %dx%d", video->width, video->height);
+        avcodec_free_context(&video->codecCtx);
+        avformat_close_input(&video->formatCtx);
+        RMVFREE(video);
+        return NULL;
+    }
+
+    // Validate pixel format
+    if (video->codecCtx->pix_fmt == AV_PIX_FMT_NONE) {
+        TraceLog(LOG_ERROR, "RAYMAPVID: Invalid pixel format");
+        avcodec_free_context(&video->codecCtx);
+        avformat_close_input(&video->formatCtx);
+        RMVFREE(video);
+        return NULL;
+    }
+
+    // Calculate FPS
+    AVRational frameRate = video->formatCtx->streams[video->videoStreamIndex]->r_frame_rate;
+    video->fps = av_q2d(frameRate);
+
+    // Calculate duration
+    int64_t duration = video->formatCtx->duration;
+    video->duration = (duration != AV_NOPTS_VALUE) ? (float)duration / AV_TIME_BASE : 0.0f;
+
+    // Store codec and format names
+    video->codecName = avcodec_get_name(codecParams->codec_id);
+    video->formatName = video->formatCtx->iformat->name;
+
+    // Check for audio stream
+    video->hasAudio = false;
+    for (unsigned int i = 0; i < video->formatCtx->nb_streams; i++) {
+        if (video->formatCtx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
+            video->hasAudio = true;
+            break;
+        }
+    }
+
+    // Allocate frames
+    video->frame = av_frame_alloc();
+    video->frameRGB = av_frame_alloc();
+    if (!video->frame || !video->frameRGB) {
+        TraceLog(LOG_ERROR, "RAYMAPVID: Failed to allocate frames");
+        rmv_CleanupVideo(video);
+        RMVFREE(video);
+        return NULL;
+    }
+
+    // Allocate packet
+    video->packet = av_packet_alloc();
+    if (!video->packet) {
+        TraceLog(LOG_ERROR, "RAYMAPVID: Failed to allocate packet");
+        rmv_CleanupVideo(video);
+        RMVFREE(video);
+        return NULL;
+    }
+
+    // Determine buffer size for RGB frame
+    int numBytes = av_image_get_buffer_size(AV_PIX_FMT_RGB24, video->width, video->height, 1);
+    if (numBytes <= 0) {
+        TraceLog(LOG_ERROR, "RAYMAPVID: Invalid buffer size: %d", numBytes);
+        rmv_CleanupVideo(video);
+        RMVFREE(video);
+        return NULL;
+    }
+
+    video->rgbBuffer = (uint8_t *)av_malloc(numBytes * sizeof(uint8_t));
+    if (!video->rgbBuffer) {
+        TraceLog(LOG_ERROR, "RAYMAPVID: Failed to allocate RGB buffer (%d bytes)", numBytes);
+        rmv_CleanupVideo(video);
+        RMVFREE(video);
+        return NULL;
+    }
+
+    TraceLog(LOG_INFO, "RAYMAPVID: RGB buffer allocated (%d bytes)", numBytes);
+
+    // Assign buffer to frameRGB with proper alignment
+    int ret = av_image_fill_arrays(
+        video->frameRGB->data,
+        video->frameRGB->linesize,
+        video->rgbBuffer,
+        AV_PIX_FMT_RGB24,
+        video->width,
+        video->height,
+        1  // alignment
+    );
+
+    if (ret < 0) {
+        TraceLog(LOG_ERROR, "RAYMAPVID: Failed to fill image arrays (error %d)", ret);
+        rmv_CleanupVideo(video);
+        RMVFREE(video);
+        return NULL;
+    }
+
+    // Initialize swscale context (YUV to RGB conversion)
+    int swsFlags = SWS_BILINEAR | SWS_FULL_CHR_H_INT;
+
+    TraceLog(LOG_INFO, "RAYMAPVID: Creating swscale context");
+    TraceLog(LOG_INFO, "  Source: %dx%d format=%s",
+             video->codecCtx->width,
+             video->codecCtx->height,
+             av_get_pix_fmt_name(video->codecCtx->pix_fmt));
+    TraceLog(LOG_INFO, "  Dest: %dx%d format=RGB24", video->width, video->height);
+
+    video->swsCtx = sws_getContext(
+        video->codecCtx->width,      // src width
+        video->codecCtx->height,     // src height
+        video->codecCtx->pix_fmt,    // src format
+        video->codecCtx->width,      // dst width
+        video->codecCtx->height,     // dst height
+        AV_PIX_FMT_RGB24,            // dst format
+        swsFlags,                    // flags
+        NULL,                        // src filter
+        NULL,                        // dst filter
+        NULL                         // param
+    );
+
+    if (!video->swsCtx) {
+        TraceLog(LOG_ERROR, "RAYMAPVID: Failed to initialize swscale context");
+        TraceLog(LOG_ERROR, "  Format: %s (%d)",
+                 av_get_pix_fmt_name(video->codecCtx->pix_fmt),
+                 video->codecCtx->pix_fmt);
+        rmv_CleanupVideo(video);
+        RMVFREE(video);
+        return NULL;
+    }
+
+    TraceLog(LOG_INFO, "RAYMAPVID: Swscale context created successfully");
+
+    // Create Raylib texture (black frame initially)
+    Image img = GenImageColor(video->width, video->height, BLACK);
+    video->texture = LoadTextureFromImage(img);
+    UnloadImage(img);
+
+    if (video->texture.id == 0) {
+        TraceLog(LOG_ERROR, "RAYMAPVID: Failed to create texture");
+        rmv_CleanupVideo(video);
+        RMVFREE(video);
+        return NULL;
+    }
+
+    video->isLoaded = true;
+
+    TraceLog(LOG_INFO, "RAYMAPVID: Video loaded successfully: %dx%d @ %.2f fps",
+             video->width, video->height, video->fps);
+
+    return video;
 }
 
 RMVAPI void RMV_UnloadVideo(RMV_Video *video) {
-    (void)video;  // Unused parameter
-    TraceLog(LOG_WARNING, "RAYMAPVID: RMV_UnloadVideo() not implemented yet (Étape 1.2)");
+    if (!video) return;
+    
+    rmv_CleanupVideo(video);
+    RMVFREE(video);
+    
+    TraceLog(LOG_INFO, "RAYMAPVID: Video unloaded");
 }
 
+
 RMVAPI RMV_VideoInfo RMV_GetVideoInfo(const RMV_Video *video) {
-    (void)video;  // Unused parameter
     RMV_VideoInfo info = {0};
-    TraceLog(LOG_WARNING, "RAYMAPVID: RMV_GetVideoInfo() not implemented yet (Étape 1.3)");
+
+    if (!video){
+        TraceLog(LOG_WARNING, "RAYMAPVID: RMV_GetVideoInfo() called with NULL video");
+        return info;   
+    }
+
+    info.width = video->width;
+    info.height = video->height;
+    info.duration = video->duration;
+    info.fps = video->fps;
+    info.codec = video->codecName;
+    info.format = video->formatName;
+    info.hasAudio = video->hasAudio;
+    info.hwaccel = RMV_HWACCEL_NONE;
+
     return info;
 }
 
 RMVAPI Texture2D RMV_GetVideoTexture(const RMV_Video *video) {
-    (void)video;  // Unused parameter
-    TraceLog(LOG_WARNING, "RAYMAPVID: RMV_GetVideoTexture() not implemented yet (Étape 1.4)");
-    return (Texture2D){0};
+    if (!video){
+        TraceLog(LOG_WARNING, "RAYMAPVID: RMV_GetVideoTexture() called with NULL video");
+        return (Texture2D){0};
+    }
+
+    return video->texture;
 }
 
 RMVAPI void RMV_UpdateVideo(RMV_Video *video, float deltaTime) {
     (void)video;
     (void)deltaTime;
-    // Stub - no implementation yet (Phase 2)
+    // Stub - no implementation yet
 }
 
 RMVAPI void RMV_PlayVideo(RMV_Video *video) {
     (void)video;
-    // Stub - no implementation yet (Phase 2)
+    // Stub - no implementation yet
 }
 
 RMVAPI void RMV_PauseVideo(RMV_Video *video) {
     (void)video;
-    // Stub - no implementation yet (Phase 2)
+    // Stub - no implementation yet
 }
 
 RMVAPI void RMV_StopVideo(RMV_Video *video) {
     (void)video;
-    // Stub - no implementation yet (Phase 2)
+    // Stub - no implementation yet
 }
 
 RMVAPI RMV_PlaybackState RMV_GetVideoState(const RMV_Video *video) {
@@ -230,8 +587,7 @@ RMVAPI bool RMV_IsVideoPlaying(const RMV_Video *video) {
 }
 
 RMVAPI bool RMV_IsVideoLoaded(const RMV_Video *video) {
-    (void)video;
-    return false;
+    return (video != NULL && video->isLoaded);
 }
 
 #endif // RAYMAPVID_IMPLEMENTATION

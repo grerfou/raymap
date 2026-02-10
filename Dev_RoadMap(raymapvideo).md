@@ -35,7 +35,7 @@ Plan détaillé du développement de RayMapVid avec objectifs, commits et tests 
 
 ---
 
-### Étape 1.2 : Chargement vidéo basique ✅ COMPLETE
+### Étape 1.2 : Chargement vidéo basique 
 **But** : Ouvrir une vidéo, extraire métadonnées, créer texture
 
 **Commit** : `feat: video loading with FFmpeg integration`
@@ -69,7 +69,7 @@ Plan détaillé du développement de RayMapVid avec objectifs, commits et tests 
 
 ---
 
-### Étape 1.3 : Métadonnées vidéo ✅ COMPLETE
+### Étape 1.3 : Métadonnées vidéo 
 **But** : Extraire et exposer les infos vidéo
 
 **Commit** : `feat: video metadata extraction (resolution, fps, codec, duration)`
@@ -95,7 +95,7 @@ Plan détaillé du développement de RayMapVid avec objectifs, commits et tests 
 
 ---
 
-### Étape 1.4 : Texture accessible ✅ COMPLETE
+### Étape 1.4 : Texture accessible 
 **But** : Exposer la texture Raylib pour affichage
 
 **Commit** : `feat: expose video texture for rendering`
@@ -116,9 +116,9 @@ Plan détaillé du développement de RayMapVid avec objectifs, commits et tests 
 
 ---
 
-## Phase 2 : Playback Basique 🔄 EN COURS
+## Phase 2 : Playback Basique 
 
-### Étape 2.1 : État de lecture ⏸️ TODO
+### Étape 2.1 : État de lecture 
 **But** : Gérer les états play/pause/stop
 
 **Commit** : `feat: playback state management (play/pause/stop)`
@@ -144,7 +144,7 @@ Plan détaillé du développement de RayMapVid avec objectifs, commits et tests 
 
 ---
 
-### Étape 2.2 : Décodage frame-by-frame ⏸️ TODO
+### Étape 2.2 : Décodage frame-by-frame 
 **But** : Implémenter RMV_UpdateVideo() avec décodage FFmpeg
 
 **Commit** : `feat: frame decoding with FFmpeg (av_read_frame loop)`
@@ -176,7 +176,7 @@ Plan détaillé du développement de RayMapVid avec objectifs, commits et tests 
 
 ---
 
-### Étape 2.3 : Conversion YUV→RGB et upload texture ⏸️ TODO
+### Étape 2.3 : Conversion YUV→RGB et upload texture 
 **But** : Convertir frames décodées et mettre à jour texture GPU
 
 **Commit** : `feat: YUV to RGB conversion and texture upload`
@@ -198,7 +198,7 @@ Plan détaillé du développement de RayMapVid avec objectifs, commits et tests 
 
 ---
 
-### Étape 2.4 : Loop vidéo ⏸️ TODO
+### Étape 2.4 : Loop vidéo 
 **But** : Rejouer automatiquement en fin de vidéo
 
 **Commit** : `feat: video looping with seek to start`
@@ -223,9 +223,9 @@ Plan détaillé du développement de RayMapVid avec objectifs, commits et tests 
 
 ---
 
-## Phase 3 : Navigation (Seeking) ⏸️ TODO
+## Phase 3 : Navigation (Seeking)
 
-### Étape 3.1 : Seeking par temps ⏸️ TODO
+### Étape 3.1 : Seeking par temps 
 **But** : Se déplacer à une position temporelle précise
 
 **Commit** : `feat: seek to specific timestamp`
@@ -250,7 +250,7 @@ Plan détaillé du développement de RayMapVid avec objectifs, commits et tests 
 
 ---
 
-### Étape 3.2 : Seeking par frame ⏸️ TODO
+### Étape 3.2 : Seeking par frame 
 **But** : Navigation frame-by-frame précise
 
 **Commit** : `feat: seek to specific frame number`
@@ -270,7 +270,7 @@ Plan détaillé du développement de RayMapVid avec objectifs, commits et tests 
 
 ---
 
-### Étape 3.3 : Query position actuelle ⏸️ TODO
+### Étape 3.3 : Query position actuelle 
 **But** : Obtenir position temps/frame courante
 
 **Commit** : `feat: query current playback position`
@@ -291,9 +291,9 @@ Plan détaillé du développement de RayMapVid avec objectifs, commits et tests 
 
 ---
 
-## Phase 4 : Robustesse ⏸️ TODO
+## Phase 4 : Robustesse 
 
-### Étape 4.1 : Gestion d'erreurs complète ⏸️ TODO
+### Étape 4.1 : Gestion d'erreurs complète 
 **But** : Gérer tous les cas limites élégamment
 
 **Commit** : `feat: comprehensive error handling`
@@ -318,7 +318,7 @@ Plan détaillé du développement de RayMapVid avec objectifs, commits et tests 
 
 ---
 
-### Étape 4.2 : Tests de stress mémoire ⏸️ TODO
+### Étape 4.2 : Tests de stress mémoire 
 **But** : Valider zéro fuite dans tous les scénarios
 
 **Commit** : `test: memory stress tests (1000+ cycles)`
@@ -343,7 +343,7 @@ Plan détaillé du développement de RayMapVid avec objectifs, commits et tests 
 
 ---
 
-### Étape 4.3 : Validation edge cases ⏸️ TODO
+### Étape 4.3 : Validation edge cases 
 **But** : Tester tous les cas limites
 
 **Commit** : `test: edge cases validation`
@@ -369,9 +369,9 @@ Plan détaillé du développement de RayMapVid avec objectifs, commits et tests 
 
 ---
 
-## Phase 5 : Performance (Optionnel) ⏸️ TODO
+## Phase 5 : Performance (Optionnel) 
 
-### Étape 5.1 : Hardware acceleration ⏸️ TODO
+### Étape 5.1 : Hardware acceleration 
 **But** : Décodage GPU pour 4K/8K
 
 **Commit** : `feat: hardware acceleration support (NVDEC, VAAPI, VideoToolbox)`
@@ -397,7 +397,7 @@ Plan détaillé du développement de RayMapVid avec objectifs, commits et tests 
 
 ---
 
-### Étape 5.2 : Optimisations ⏸️ TODO
+### Étape 5.2 : Optimisations 
 **But** : Performance maximale
 
 **Commit** : `perf: frame buffering and optimizations`
@@ -419,9 +419,9 @@ Plan détaillé du développement de RayMapVid avec objectifs, commits et tests 
 
 ---
 
-## Phase 6 : Features Avancées ⏸️ TODO
+## Phase 6 : Features Avancées 
 
-### Étape 6.1 : Vitesse de lecture ⏸️ TODO
+### Étape 6.1 : Vitesse de lecture 
 **But** : Slow motion / fast forward
 
 **Commit** : `feat: playback speed control`
@@ -443,7 +443,7 @@ Plan détaillé du développement de RayMapVid avec objectifs, commits et tests 
 
 ---
 
-### Étape 6.2 : Audio sync (bonus) ⏸️ TODO
+### Étape 6.2 : Audio sync (bonus)
 **But** : Synchroniser audio et vidéo
 
 **Commit** : `feat: audio synchronization (experimental)`
@@ -465,9 +465,9 @@ Plan détaillé du développement de RayMapVid avec objectifs, commits et tests 
 
 ---
 
-## Phase 7 : Polish & Release ⏸️ TODO
+## Phase 7 : Polish & Release 
 
-### Étape 7.1 : Exemples complets ⏸️ TODO
+### Étape 7.1 : Exemples complets 
 **But** : Exemples pour tous les use cases
 
 **Commit** : `docs: comprehensive examples`
@@ -490,7 +490,7 @@ Plan détaillé du développement de RayMapVid avec objectifs, commits et tests 
 
 ---
 
-### Étape 7.2 : Documentation API ⏸️ TODO
+### Étape 7.2 : Documentation API 
 **But** : Doc complète de l'API
 
 **Commit** : `docs: complete API reference`
@@ -511,7 +511,7 @@ Plan détaillé du développement de RayMapVid avec objectifs, commits et tests 
 
 ---
 
-### Étape 7.3 : Tests CI/CD ⏸️ TODO
+### Étape 7.3 : Tests CI/CD 
 **But** : Automatiser les tests
 
 **Commit** : `ci: GitHub Actions for automated testing`
@@ -534,15 +534,15 @@ Plan détaillé du développement de RayMapVid avec objectifs, commits et tests 
 
 | Phase                    | Statut       | Étapes  | Tests   |
 |--------------------------|--------------|---------|---------|
-| 1. Foundation            | ✅ COMPLETE  | 4/4     | 17/17   |
-| 2. Playback Basique      | 🔄 EN COURS  | 0/4     | 0/16    |
+| 1. Foundation            | ⏸️ COMPLETE  | 4/4     | 17/17   |
+| 2. Playback Basique      | ⏸️ EN COURS  | 0/4     | 0/16    |
 | 3. Navigation (Seeking)  | ⏸️ TODO      | 0/3     | 0/9     |
 | 4. Robustesse            | ⏸️ TODO      | 0/3     | 0/17    |
 | 5. Performance           | ⏸️ TODO      | 0/2     | 0/8     |
 | 6. Features Avancées     | ⏸️ TODO      | 0/2     | 0/7     |
 | 7. Polish & Release      | ⏸️ TODO      | 0/3     | 0/5     |
 
-**Progression globale** : 4/21 étapes (19%)  
+**Progression globale** : 1/21 étapes (19%)  
 **Tests validés** : 17/79 (22%)
 
 ---
