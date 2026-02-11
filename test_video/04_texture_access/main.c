@@ -210,12 +210,6 @@ int main(int argc, char **argv) {
         printf("  ✓ 1.4 - Texture access\n\n");
         
         printf("Memory validation:\n");
-        printf("  make EXAMPLE=02_video_loading test-memory\n");
-        printf("  make EXAMPLE=03_video_metadata test-memory\n");
-        printf("  make EXAMPLE=04_texture_access test-memory\n\n");
-        
-        printf("Next: Phase 2 - Playback Basique\n");
-        printf("  Étape 2.1 - État de lecture (Play/Pause/Stop)\n\n");
         
         return 0;
     } else {

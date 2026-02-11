@@ -189,10 +189,10 @@ Plan détaillé du développement de RayMapVid avec objectifs, commits et tests 
 ```
 
 **Tests** :
-- [ ] Test: Frame décodée → texture mise à jour
-- [ ] Test: Contenu visuel correct (pas de couleurs bizarres)
-- [ ] Test: Pas de tearing/glitches
-- [ ] Test: Performance acceptable (>30 FPS software decode 720p)
+- [x] Test: Frame décodée → texture mise à jour
+- [x] Test: Contenu visuel correct (pas de couleurs bizarres)
+- [x] Test: Pas de tearing/glitches
+- [x] Test: Performance acceptable (>30 FPS software decode 720p)
 
 **Fichier test** : `07_texture_update/`
 
@@ -213,11 +213,11 @@ Plan détaillé du développement de RayMapVid avec objectifs, commits et tests 
 ```
 
 **Tests** :
-- [ ] Test: Loop activé → redémarre automatiquement
-- [ ] Test: Loop désactivé → s'arrête à la fin
-- [ ] Test: Seek au début fonctionne
-- [ ] Test: Pas de freeze pendant loop
-- [ ] Test: Compteur temps reset correct
+- [x] Test: Loop activé → redémarre automatiquement
+- [x] Test: Loop désactivé → s'arrête à la fin
+- [x] Test: Seek au début fonctionne
+- [x] Test: Pas de freeze pendant loop
+- [x] Test: Compteur temps reset correct
 
 **Fichier test** : `08_video_loop/`
 

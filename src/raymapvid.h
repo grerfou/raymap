@@ -642,7 +642,7 @@ RMVAPI void RMV_UpdateVideo(RMV_Video *video, float deltaTime) {
             if (ret < 0){
                 // End of file or error
                 if (ret == AVERROR_EOF){
-                    TraceLog(LOG_ERROR, "RAYMAPVID: End of Video reached");
+                    TraceLog(LOG_INFO, "RAYMAPVID: End of Video reached");
 
                     if (video->loop){
                         // Loop seek back restart

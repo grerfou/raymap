@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
     // Vérifier si fichier existe
     FILE *f = fopen(videoPath, "rb");
     if (!f) {
-        printf("❌ ERROR: Video file not found\n\n");
+        printf(" ERROR: Video file not found\n\n");
         printf("Expected: %s\n", videoPath);
         return 1;
     }
