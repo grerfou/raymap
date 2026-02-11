@@ -133,12 +133,12 @@ Plan détaillé du développement de RayMapVid avec objectifs, commits et tests 
 ```
 
 **Tests** :
-- [ ] Test: État initial = STOPPED
-- [ ] Test: PlayVideo → PLAYING
-- [ ] Test: PauseVideo → PAUSED
-- [ ] Test: StopVideo → STOPPED + time=0
-- [ ] Test: TogglePause alterne correctement
-- [ ] Test: État persiste après cleanup
+- [x] Test: État initial = STOPPED
+- [x] Test: PlayVideo → PLAYING
+- [x] Test: PauseVideo → PAUSED
+- [x] Test: StopVideo → STOPPED + time=0
+- [x] Test: TogglePause alterne correctement
+- [x] Test: État persiste après cleanup
 
 **Fichier test** : `05_playback_state/`
 
@@ -160,12 +160,12 @@ Plan détaillé du développement de RayMapVid avec objectifs, commits et tests 
 ```
 
 **Tests** :
-- [ ] Test: UpdateVideo décode frame
-- [ ] Test: Respect timing FPS
-- [ ] Test: Skip frames si deltaTime trop grand
-- [ ] Test: État PLAYING requis pour décoder
-- [ ] Test: État PAUSED ne décode pas
-- [ ] Test: Gestion EOF propre
+- [x] Test: UpdateVideo décode frame
+- [x] Test: Respect timing FPS
+- [x] Test: Skip frames si deltaTime trop grand
+- [x] Test: État PLAYING requis pour décoder
+- [x] Test: État PAUSED ne décode pas
+- [x] Test: Gestion EOF propre
 
 **Fichier test** : `06_frame_decoding/`
 

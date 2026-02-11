@@ -125,6 +125,9 @@ RMVAPI RMV_PlaybackState RMV_GetVideoState(const RMV_Video *video);
 RMVAPI bool RMV_IsVideoPlaying(const RMV_Video *video);
 RMVAPI bool RMV_IsVideoLoaded(const RMV_Video *video);
 
+// Settings
+RMVAPI void RMV_SetVideoLoop(RMV_Video *video, bool loop);
+
 #endif // RAYMAPVID_H
 
 /***********************************************************************************
@@ -191,6 +194,7 @@ struct RMV_Video {
     // raylib texture
     Texture2D texture;
     uint8_t *rgbBuffer;
+    bool textureCreated;
 
     // Video Metadata
     int width;
@@ -205,6 +209,7 @@ struct RMV_Video {
     RMV_PlaybackState state;
     float currentTime;
     bool loop;
+    float frameAccumulator;
 
     // State flags
     bool isLoaded;
@@ -502,24 +507,16 @@ RMVAPI RMV_Video *RMV_LoadVideo(const char *filepath) {
 
     TraceLog(LOG_INFO, "RAYMAPVID: Swscale context created successfully");
 
-    // Create Raylib texture (black frame initially)
-    Image img = GenImageColor(video->width, video->height, BLACK);
-    video->texture = LoadTextureFromImage(img);
-    UnloadImage(img);
-
-    if (video->texture.id == 0) {
-        TraceLog(LOG_ERROR, "RAYMAPVID: Failed to create texture");
-        rmv_CleanupVideo(video);
-        RMVFREE(video);
-        return NULL;
-    }
-    
+    // Initialize texture as empty (will be created on first GetVideoTexture call)
+    video->texture = (Texture2D){0};
+    video->textureCreated = false;   
     video->isLoaded = true;
 
     // Init video playback state
     video->state = RMV_STATE_STOPPED;
     video->currentTime = 0.0f;
     video->loop = false;
+    video->frameAccumulator = 0.0f;
 
     TraceLog(LOG_INFO, "RAYMAPVID: Video loaded successfully: %dx%d @ %.2f fps",
              video->width, video->height, video->fps);
@@ -562,14 +559,174 @@ RMVAPI Texture2D RMV_GetVideoTexture(const RMV_Video *video) {
         TraceLog(LOG_WARNING, "RAYMAPVID: RMV_GetVideoTexture() called with NULL video");
         return (Texture2D){0};
     }
+    
+    // Create texture on first access (lazy initialization)
+    if (!video->textureCreated) {
+        // Need to cast away const to modify texture (safe here)
+        RMV_Video *v = (RMV_Video *)video;
+        
+        Image img = {
+            .data = v->rgbBuffer,
+            .width = v->width,
+            .height = v->height,
+            .mipmaps = 1,
+            .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8
+        };
+        v->texture = LoadTextureFromImage(img);
+        //UnloadImage(img);
+        
+        if (v->texture.id == 0) {
+            TraceLog(LOG_ERROR, "RAYMAPVID: Failed to create texture");
+            return (Texture2D){0};
+        }
+        
+        v->textureCreated = true;
+        TraceLog(LOG_INFO, "RAYMAPVID: Texture created on first access");
+    }
 
     return video->texture;
 }
 
 RMVAPI void RMV_UpdateVideo(RMV_Video *video, float deltaTime) {
-    (void)video;
-    (void)deltaTime;
-    // Stub - no implementation yet
+
+    if (!video || !video->isLoaded){
+        return;
+    }
+
+    // Only Update if playing
+    if (video->state != RMV_STATE_PLAYING){
+        return;
+    }
+
+    // Create texture on first update if not already created (lazy init)
+    if (!video->textureCreated) {
+        // Create image with correct format pointing to our RGB buffer
+        Image img = {
+            .data = video->rgbBuffer,
+            .width = video->width,
+            .height = video->height,
+            .mipmaps = 1,
+            .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8
+        };
+        video->texture = LoadTextureFromImage(img);
+        //UnloadImage(img);
+        
+        if (video->texture.id == 0) {
+            TraceLog(LOG_ERROR, "RAYMAPVID: Failed to create texture");
+            video->state = RMV_STATE_ERROR;
+            return;
+        }
+        
+        video->textureCreated = true;
+        TraceLog(LOG_INFO, "RAYMAPVID: Texture created on first update");
+    }
+
+    // Accumulate time
+    video->frameAccumulator += deltaTime;
+    video->currentTime += deltaTime;
+
+    // Calculate frame time based on FPS
+    float frameTime = 1.0f / video->fps;
+
+    // Decode frames if enough time has accumulated
+    while (video->frameAccumulator >= frameTime){
+        video->frameAccumulator -= frameTime;
+
+        // Try decode one frame
+        bool frameDecoded = false;
+
+        while (!frameDecoded){
+            // Read packet from stream
+            int ret = av_read_frame(video->formatCtx, video->packet);
+
+            if (ret < 0){
+                // End of file or error
+                if (ret == AVERROR_EOF){
+                    TraceLog(LOG_ERROR, "RAYMAPVID: End of Video reached");
+
+                    if (video->loop){
+                        // Loop seek back restart
+                        av_seek_frame(video->formatCtx, video->videoStreamIndex, 0, AVSEEK_FLAG_BACKWARD);
+                        avcodec_flush_buffers(video->codecCtx);
+                        video->currentTime = 0.0f;
+                        video->frameAccumulator = 0.0f;
+                        continue;
+                    } else {
+                        // stop playback
+                        video->state = RMV_STATE_STOPPED;
+                        video->currentTime = 0.0f;
+                        video->frameAccumulator = 0.0f;
+                        return;
+                    }
+                } else {
+                    TraceLog(LOG_ERROR, "RAYMAPVID: RAYMAPVID: Error reading frame: %d", ret);
+                    return;
+                }
+            }
+
+            // check packet is from video stream
+            if (video->packet->stream_index == video->videoStreamIndex){
+                // Send packet tyo decoder
+                ret = avcodec_send_packet(video->codecCtx, video->packet);
+
+                if (ret < 0){
+                    TraceLog(LOG_ERROR, "RAYMAPVID: RAYMAPVID: Error reading frame: %d", ret);
+                    av_packet_unref(video->packet);
+                    return;
+                }
+
+                // Receive decoded frame
+                ret = avcodec_receive_frame(video->codecCtx, video->frame);
+
+                if (ret == 0){
+                    // Frame decoded successfull
+
+                    // ConvertYUV top RGB
+                    sws_scale(
+                            video->swsCtx,
+                            (const uint8_t *const *)video->frame->data,
+                            video->frame->linesize,
+                            0,
+                            video->codecCtx->height,
+                            video->frameRGB->data,
+                            video->frameRGB->linesize
+                    );
+
+                    // Update texture with new frame
+                    UpdateTexture(video->texture, video->rgbBuffer);
+
+                    frameDecoded = true;
+
+                } else if (ret == AVERROR(EAGAIN)){
+                    // Need more packets
+                    // Continue to readnext packet
+                } else if (ret == AVERROR_EOF){
+                    // Decoder has been fully flushed
+                    frameDecoded = true;
+                } else {
+                    TraceLog(LOG_ERROR, "RAYMAPVID: Error receiving frame: %d", ret);
+                    av_packet_unref(video->packet);
+                    return;
+                }
+            }
+
+            av_packet_unref(video->packet);
+
+            if (frameDecoded){
+                break;
+            }
+        }
+    }
+}
+
+RMVAPI void RMV_SetVideoLoop(RMV_Video *video, bool loop){
+    if (!video || !video->isLoaded){
+        TraceLog(LOG_WARNING, "RAYMAPVID: RMV_SetVideoLoop() called with invalid video");
+        return;
+    }
+
+    video->loop = loop;
+    TraceLog(LOG_INFO, "RAYMAPVID: Video loop %s", loop ? "enabled" : "disabled");
 }
 
 RMVAPI void RMV_PlayVideo(RMV_Video *video) {

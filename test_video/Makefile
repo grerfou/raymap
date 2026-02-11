@@ -22,7 +22,8 @@ ASAN_FLAGS = -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer -g
 #EXAMPLE = 02_video_loading
 #EXAMPLE = 03_video_metadata
 #EXAMPLE = 04_texture_access
-EXAMPLE = 05_playback_state
+#EXAMPLE = 05_playback_state
+EXAMPLE = 06_frame_decoding
 
 # ============================================================================
 # Détection automatique
