@@ -118,6 +118,7 @@ RMVAPI void RMV_UpdateVideo(RMV_Video *video, float deltaTime);
 RMVAPI void RMV_PlayVideo(RMV_Video *video);
 RMVAPI void RMV_PauseVideo(RMV_Video *video);
 RMVAPI void RMV_StopVideo(RMV_Video *video);
+RMVAPI void RMV_ToggleVideoPause(RMV_Video *video);
 
 // State query
 RMVAPI RMV_PlaybackState RMV_GetVideoState(const RMV_Video *video);
@@ -199,6 +200,11 @@ struct RMV_Video {
     const char *codecName;
     const char *formatName;
     bool hasAudio;
+
+    // Playbacl state 
+    RMV_PlaybackState state;
+    float currentTime;
+    bool loop;
 
     // State flags
     bool isLoaded;
@@ -507,8 +513,13 @@ RMVAPI RMV_Video *RMV_LoadVideo(const char *filepath) {
         RMVFREE(video);
         return NULL;
     }
-
+    
     video->isLoaded = true;
+
+    // Init video playback state
+    video->state = RMV_STATE_STOPPED;
+    video->currentTime = 0.0f;
+    video->loop = false;
 
     TraceLog(LOG_INFO, "RAYMAPVID: Video loaded successfully: %dx%d @ %.2f fps",
              video->width, video->height, video->fps);
@@ -562,28 +573,69 @@ RMVAPI void RMV_UpdateVideo(RMV_Video *video, float deltaTime) {
 }
 
 RMVAPI void RMV_PlayVideo(RMV_Video *video) {
-    (void)video;
-    // Stub - no implementation yet
+
+    if (!video || !video->isLoaded){
+        TraceLog(LOG_WARNING, "RAYMAPVID: RMV_PlayVideo() called with invalid video");
+        return;
+    }
+
+    video->state = RMV_STATE_PLAYING;
+    TraceLog(LOG_INFO, "RAYMAPVID: Video Playing");
 }
 
 RMVAPI void RMV_PauseVideo(RMV_Video *video) {
-    (void)video;
-    // Stub - no implementation yet
+
+    if (!video || !video->isLoaded){
+        TraceLog(LOG_WARNING, "RAYMAPVID: RMV_PausedVideo called with invalid video");
+        return;
+    }
+
+    video->state = RMV_STATE_PAUSED;
+    TraceLog(LOG_INFO, "RAYMAPVID: Video Paused");
 }
 
 RMVAPI void RMV_StopVideo(RMV_Video *video) {
-    (void)video;
-    // Stub - no implementation yet
+    
+    if (!video || !video->isLoaded){
+        TraceLog(LOG_WARNING, "RAYMAPVID: RMV_StopVideo called with invalid video");
+        return;
+    }
+
+    video->state = RMV_STATE_STOPPED;
+    video->currentTime = 0.0f;
+    TraceLog(LOG_INFO, "RAYMAPVI: Video stopped");
+}
+
+RMVAPI void RMV_ToggleVideoPause(RMV_Video *video){
+    
+    if (!video || !video->isLoaded){
+        TraceLog(LOG_WARNING, "RAYMAPVID: RMV_StopVideo called with invalid video");
+        return;
+    }
+
+    if (video->state == RMV_STATE_PLAYING){
+        RMV_PauseVideo(video);
+    }else if (video->state == RMV_STATE_PAUSED){
+        RMV_PlayVideo(video);
+    }
 }
 
 RMVAPI RMV_PlaybackState RMV_GetVideoState(const RMV_Video *video) {
-    (void)video;
-    return RMV_STATE_STOPPED;
+
+    if (!video || !video->isLoaded){
+        return RMV_STATE_ERROR;
+    }
+
+    return video->state;
 }
 
 RMVAPI bool RMV_IsVideoPlaying(const RMV_Video *video) {
-    (void)video;
-    return false;
+
+    if (!video || !video->isLoaded){
+        return false;
+    }
+
+    return (video->state == RMV_STATE_PLAYING);
 }
 
 RMVAPI bool RMV_IsVideoLoaded(const RMV_Video *video) {
