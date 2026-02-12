@@ -61,4 +61,8 @@
 *.ilk
 *.log
 
+# Ignore file test
+tests/
+test_video/
+
 build
