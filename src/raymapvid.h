@@ -188,7 +188,7 @@ struct RMV_Video {
     AVPacket *packet;
     struct SwsContext *swsCtx;
 
-    // Strean info
+    // Stream info
     int videoStreamIndex;
 
     // raylib texture
@@ -205,7 +205,7 @@ struct RMV_Video {
     const char *formatName;
     bool hasAudio;
 
-    // Playbacl state 
+    // Playback state 
     RMV_PlaybackState state;
     float currentTime;
     bool loop;
@@ -220,7 +220,7 @@ struct RMV_Video {
 // Internal Helper Functions
 //--------------------------------------------------------------------------------------------
 
-// Cleanup function -> free ressources 
+// Cleanup function -> free resources 
 // Cleanup function - frees all resources in proper order
 static void rmv_CleanupVideo(RMV_Video *video) {
     if (!video) return;
@@ -666,7 +666,7 @@ RMVAPI void RMV_UpdateVideo(RMV_Video *video, float deltaTime) {
 
             // check packet is from video stream
             if (video->packet->stream_index == video->videoStreamIndex){
-                // Send packet tyo decoder
+                // Send packet to decoder
                 ret = avcodec_send_packet(video->codecCtx, video->packet);
 
                 if (ret < 0){
@@ -760,7 +760,7 @@ RMVAPI void RMV_StopVideo(RMV_Video *video) {
 
     video->state = RMV_STATE_STOPPED;
     video->currentTime = 0.0f;
-    TraceLog(LOG_INFO, "RAYMAPVI: Video stopped");
+    TraceLog(LOG_INFO, "RAYMAPVID: Video stopped");
 }
 
 RMVAPI void RMV_ToggleVideoPause(RMV_Video *video){
