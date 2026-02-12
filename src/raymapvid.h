@@ -175,6 +175,14 @@ RMVAPI void RMV_SetVideoLoop(RMV_Video *video, bool loop);
 #endif
 
 //--------------------------------------------------------------------------------------------
+// Internal Constants
+//--------------------------------------------------------------------------------------------
+
+#define RMV_MIN_DIMENSION 16
+#define RMV_MAX_DIMENSION 16384  // Support up to 16K video
+#define RMV_SWS_FLAGS (SWS_BILINEAR | SWS_FULL_CHR_H_INT)
+
+//--------------------------------------------------------------------------------------------
 // Internal Structure
 //--------------------------------------------------------------------------------------------
 
@@ -377,9 +385,9 @@ RMVAPI RMV_Video *RMV_LoadVideo(const char *filepath) {
     video->height = video->codecCtx->height;
 
     // Validate dimensions
-    if (video->width <= 0 || video->height <= 0 ||
-        video->width > 8192 || video->height > 8192) {
-        TraceLog(LOG_ERROR, "RAYMAPVID: Invalid dimensions: %dx%d", video->width, video->height);
+    if (video->width <= RMV_MIN_DIMENSION || video->height <= RMV_MIN_DIMENSION ||
+        video->width > RMV_MAX_DIMENSION || video->height > RMV_MAX_DIMENSION) {
+        TraceLog(LOG_ERROR, "RAYMAPVID: Invalid dimensions: %dx%d (min:%d, maw=%d)", video->width, video->height, RMV_MIN_DIMENSION, RMV_MAX_DIMENSION);
         avcodec_free_context(&video->codecCtx);
         avformat_close_input(&video->formatCtx);
         RMVFREE(video);
@@ -473,7 +481,7 @@ RMVAPI RMV_Video *RMV_LoadVideo(const char *filepath) {
     }
 
     // Initialize swscale context (YUV to RGB conversion)
-    int swsFlags = SWS_BILINEAR | SWS_FULL_CHR_H_INT;
+    //int swsFlags = SWS_BILINEAR | SWS_FULL_CHR_H_INT;
 
     TraceLog(LOG_INFO, "RAYMAPVID: Creating swscale context");
     TraceLog(LOG_INFO, "  Source: %dx%d format=%s",
@@ -489,7 +497,7 @@ RMVAPI RMV_Video *RMV_LoadVideo(const char *filepath) {
         video->codecCtx->width,      // dst width
         video->codecCtx->height,     // dst height
         AV_PIX_FMT_RGB24,            // dst format
-        swsFlags,                    // flags
+        RMV_SWS_FLAGS,              // flags
         NULL,                        // src filter
         NULL,                        // dst filter
         NULL                         // param
