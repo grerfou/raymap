@@ -61,8 +61,10 @@
 *.ilk
 *.log
 
-# Ignore file test
+# Ignore file test/roadmap dev
 tests/
 test_video/
+Dev_RoadMap.md
+Dev_RoadMapvid.md
 
 build
