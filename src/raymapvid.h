@@ -573,6 +573,7 @@ RMVAPI Texture2D RMV_GetVideoTexture(const RMV_Video *video) {
             .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8
         };
         v->texture = LoadTextureFromImage(img);
+        // Don't unload img - it points to rgbBuffer which we still need
         //UnloadImage(img);
         
         if (v->texture.id == 0) {
@@ -609,6 +610,7 @@ RMVAPI void RMV_UpdateVideo(RMV_Video *video, float deltaTime) {
             .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8
         };
         video->texture = LoadTextureFromImage(img);
+        // Don't unload img - it points to rgbBuffer which we still need
         //UnloadImage(img);
         
         if (video->texture.id == 0) {
