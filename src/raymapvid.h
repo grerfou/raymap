@@ -228,7 +228,6 @@ struct RMV_Video {
 // Internal Helper Functions
 //--------------------------------------------------------------------------------------------
 
-// Cleanup function -> free resources 
 // Cleanup function - frees all resources in proper order
 static void rmv_CleanupVideo(RMV_Video *video) {
     if (!video) return;
@@ -282,6 +281,30 @@ static void rmv_CleanupVideo(RMV_Video *video) {
         avformat_close_input(&video->formatCtx);
         // avformat_close_input() sets pointer to NULL automatically
     }
+}
+
+static bool rmv_CreateTexture(RMV_Video *video){
+    if (!video || !video->rgbBuffer) return false;
+    if (video->textureCreated) return true;
+
+    Image img = {
+        .data = video->rgbBuffer,
+        .width = video->width,
+        .height = video->height,
+        .mipmaps = 1,
+        .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8
+    };
+
+    video->texture = LoadTextureFromImage(img);
+
+    if (video->texture.id == 0){
+        TraceLog(LOG_ERROR, "RAYMAPVID: Failed to create texture");
+        return false;
+    }
+
+    video->textureCreated = true;
+    TraceLog(LOG_INFO, "RAYMAPVID: Texture created (%dx%d)", video->width, video->height);
+    return true;
 }
 
 //--------------------------------------------------------------------------------------------
@@ -387,7 +410,7 @@ RMVAPI RMV_Video *RMV_LoadVideo(const char *filepath) {
     // Validate dimensions
     if (video->width <= RMV_MIN_DIMENSION || video->height <= RMV_MIN_DIMENSION ||
         video->width > RMV_MAX_DIMENSION || video->height > RMV_MAX_DIMENSION) {
-        TraceLog(LOG_ERROR, "RAYMAPVID: Invalid dimensions: %dx%d (min:%d, maw=%d)", video->width, video->height, RMV_MIN_DIMENSION, RMV_MAX_DIMENSION);
+        TraceLog(LOG_ERROR, "RAYMAPVID: Invalid dimensions: %dx%d (min:%d, max=%d)", video->width, video->height, RMV_MIN_DIMENSION, RMV_MAX_DIMENSION);
         avcodec_free_context(&video->codecCtx);
         avformat_close_input(&video->formatCtx);
         RMVFREE(video);
@@ -481,7 +504,6 @@ RMVAPI RMV_Video *RMV_LoadVideo(const char *filepath) {
     }
 
     // Initialize swscale context (YUV to RGB conversion)
-    //int swsFlags = SWS_BILINEAR | SWS_FULL_CHR_H_INT;
 
     TraceLog(LOG_INFO, "RAYMAPVID: Creating swscale context");
     TraceLog(LOG_INFO, "  Source: %dx%d format=%s",
@@ -570,27 +592,10 @@ RMVAPI Texture2D RMV_GetVideoTexture(const RMV_Video *video) {
     
     // Create texture on first access (lazy initialization)
     if (!video->textureCreated) {
-        // Need to cast away const to modify texture (safe here)
         RMV_Video *v = (RMV_Video *)video;
-        
-        Image img = {
-            .data = v->rgbBuffer,
-            .width = v->width,
-            .height = v->height,
-            .mipmaps = 1,
-            .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8
-        };
-        v->texture = LoadTextureFromImage(img);
-        // Don't unload img - it points to rgbBuffer which we still need
-        //UnloadImage(img);
-        
-        if (v->texture.id == 0) {
-            TraceLog(LOG_ERROR, "RAYMAPVID: Failed to create texture");
+        if (!rmv_CreateTexture(v)){
             return (Texture2D){0};
-        }
-        
-        v->textureCreated = true;
-        TraceLog(LOG_INFO, "RAYMAPVID: Texture created on first access");
+        } 
     }
 
     return video->texture;
@@ -609,26 +614,10 @@ RMVAPI void RMV_UpdateVideo(RMV_Video *video, float deltaTime) {
 
     // Create texture on first update if not already created (lazy init)
     if (!video->textureCreated) {
-        // Create image with correct format pointing to our RGB buffer
-        Image img = {
-            .data = video->rgbBuffer,
-            .width = video->width,
-            .height = video->height,
-            .mipmaps = 1,
-            .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8
-        };
-        video->texture = LoadTextureFromImage(img);
-        // Don't unload img - it points to rgbBuffer which we still need
-        //UnloadImage(img);
-        
-        if (video->texture.id == 0) {
-            TraceLog(LOG_ERROR, "RAYMAPVID: Failed to create texture");
-            video->state = RMV_STATE_ERROR;
-            return;
-        }
-        
-        video->textureCreated = true;
-        TraceLog(LOG_INFO, "RAYMAPVID: Texture created on first update");
+       if (!rmv_CreateTexture(video)){
+           video->state = RMV_STATE_ERROR;
+           return;
+       } 
     }
 
     // Accumulate time
@@ -680,7 +669,7 @@ RMVAPI void RMV_UpdateVideo(RMV_Video *video, float deltaTime) {
                 ret = avcodec_send_packet(video->codecCtx, video->packet);
 
                 if (ret < 0){
-                    TraceLog(LOG_ERROR, "RAYMAPVID: Error sending packet %d", ret);
+                    TraceLog(LOG_ERROR, "RAYMAPVID: Error sending packet: %d", ret);
                     av_packet_unref(video->packet);
                     return;
                 }
