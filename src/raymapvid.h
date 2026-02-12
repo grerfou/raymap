@@ -659,7 +659,7 @@ RMVAPI void RMV_UpdateVideo(RMV_Video *video, float deltaTime) {
                         return;
                     }
                 } else {
-                    TraceLog(LOG_ERROR, "RAYMAPVID: RAYMAPVID: Error reading frame: %d", ret);
+                    TraceLog(LOG_ERROR, "RAYMAPVID: Error reading frame: %d", ret);
                     return;
                 }
             }
@@ -670,7 +670,7 @@ RMVAPI void RMV_UpdateVideo(RMV_Video *video, float deltaTime) {
                 ret = avcodec_send_packet(video->codecCtx, video->packet);
 
                 if (ret < 0){
-                    TraceLog(LOG_ERROR, "RAYMAPVID: RAYMAPVID: Error reading frame: %d", ret);
+                    TraceLog(LOG_ERROR, "RAYMAPVID: Error sending packet %d", ret);
                     av_packet_unref(video->packet);
                     return;
                 }
