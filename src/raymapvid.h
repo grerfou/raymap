@@ -307,6 +307,19 @@ static bool rmv_CreateTexture(RMV_Video *video){
     return true;
 }
 
+static bool rmv_ValidateVideo(const RMV_Video *video, const char *funcName){
+    if (!video){
+        TraceLog(LOG_WARNING, "RAYMAPVID: %s() called with NULL video", funcName);
+        return false;
+    }
+
+    if (!video->isLoaded){
+        TraceLog(LOG_WARNING, "RAYMAPVID: %s() called on unloaded video", funcName);
+        return false;
+    }
+    return true;
+}
+
 //--------------------------------------------------------------------------------------------
 // Public API
 //--------------------------------------------------------------------------------------------
@@ -567,9 +580,8 @@ RMVAPI void RMV_UnloadVideo(RMV_Video *video) {
 RMVAPI RMV_VideoInfo RMV_GetVideoInfo(const RMV_Video *video) {
     RMV_VideoInfo info = {0};
 
-    if (!video){
-        TraceLog(LOG_WARNING, "RAYMAPVID: RMV_GetVideoInfo() called with NULL video");
-        return info;   
+    if (!rmv_ValidateVideo(video, "RMV_GetVideoInfo")){
+        return (RMV_VideoInfo){0};
     }
 
     info.width = video->width;
@@ -585,10 +597,11 @@ RMVAPI RMV_VideoInfo RMV_GetVideoInfo(const RMV_Video *video) {
 }
 
 RMVAPI Texture2D RMV_GetVideoTexture(const RMV_Video *video) {
-    if (!video){
-        TraceLog(LOG_WARNING, "RAYMAPVID: RMV_GetVideoTexture() called with NULL video");
+    
+    if (!rmv_ValidateVideo(video, "RMV_GetVideoTexture")){
         return (Texture2D){0};
     }
+
     
     // Create texture on first access (lazy initialization)
     if (!video->textureCreated) {
@@ -603,7 +616,7 @@ RMVAPI Texture2D RMV_GetVideoTexture(const RMV_Video *video) {
 
 RMVAPI void RMV_UpdateVideo(RMV_Video *video, float deltaTime) {
 
-    if (!video || !video->isLoaded){
+    if (!rmv_ValidateVideo(video, "RMV_UpdateVideo")) {
         return;
     }
 
@@ -719,10 +732,8 @@ RMVAPI void RMV_UpdateVideo(RMV_Video *video, float deltaTime) {
 }
 
 RMVAPI void RMV_SetVideoLoop(RMV_Video *video, bool loop){
-    if (!video || !video->isLoaded){
-        TraceLog(LOG_WARNING, "RAYMAPVID: RMV_SetVideoLoop() called with invalid video");
-        return;
-    }
+    
+    if (!rmv_ValidateVideo(video, "RMV_SetVideoLoop")) return;
 
     video->loop = loop;
     TraceLog(LOG_INFO, "RAYMAPVID: Video loop %s", loop ? "enabled" : "disabled");
@@ -730,10 +741,7 @@ RMVAPI void RMV_SetVideoLoop(RMV_Video *video, bool loop){
 
 RMVAPI void RMV_PlayVideo(RMV_Video *video) {
 
-    if (!video || !video->isLoaded){
-        TraceLog(LOG_WARNING, "RAYMAPVID: RMV_PlayVideo() called with invalid video");
-        return;
-    }
+    if (!rmv_ValidateVideo(video, "RMV_PlayVideo")) return;
 
     video->state = RMV_STATE_PLAYING;
     TraceLog(LOG_INFO, "RAYMAPVID: Video Playing");
@@ -741,10 +749,7 @@ RMVAPI void RMV_PlayVideo(RMV_Video *video) {
 
 RMVAPI void RMV_PauseVideo(RMV_Video *video) {
 
-    if (!video || !video->isLoaded){
-        TraceLog(LOG_WARNING, "RAYMAPVID: RMV_PausedVideo called with invalid video");
-        return;
-    }
+    if (!rmv_ValidateVideo(video, "RMV_PauseVideo")) return;
 
     video->state = RMV_STATE_PAUSED;
     TraceLog(LOG_INFO, "RAYMAPVID: Video Paused");
@@ -752,11 +757,8 @@ RMVAPI void RMV_PauseVideo(RMV_Video *video) {
 
 RMVAPI void RMV_StopVideo(RMV_Video *video) {
     
-    if (!video || !video->isLoaded){
-        TraceLog(LOG_WARNING, "RAYMAPVID: RMV_StopVideo called with invalid video");
-        return;
-    }
-
+    if (!rmv_ValidateVideo(video, "RMV_StopVideo")) return;
+    
     video->state = RMV_STATE_STOPPED;
     video->currentTime = 0.0f;
     TraceLog(LOG_INFO, "RAYMAPVID: Video stopped");
@@ -764,10 +766,7 @@ RMVAPI void RMV_StopVideo(RMV_Video *video) {
 
 RMVAPI void RMV_ToggleVideoPause(RMV_Video *video){
     
-    if (!video || !video->isLoaded){
-        TraceLog(LOG_WARNING, "RAYMAPVID: RMV_StopVideo called with invalid video");
-        return;
-    }
+    if (!rmv_ValidateVideo(video, "RMV_ToggleVideoPause")) return;
 
     if (video->state == RMV_STATE_PLAYING){
         RMV_PauseVideo(video);
@@ -778,19 +777,19 @@ RMVAPI void RMV_ToggleVideoPause(RMV_Video *video){
 
 RMVAPI RMV_PlaybackState RMV_GetVideoState(const RMV_Video *video) {
 
-    if (!video || !video->isLoaded){
+    if (!rmv_ValidateVideo(video, "RMV_GetVideoState")) {
         return RMV_STATE_ERROR;
     }
-
+    
     return video->state;
 }
 
 RMVAPI bool RMV_IsVideoPlaying(const RMV_Video *video) {
 
-    if (!video || !video->isLoaded){
+    if (!rmv_ValidateVideo(video, "RMV_IsVideoPlaying")) {
         return false;
     }
-
+    
     return (video->state == RMV_STATE_PLAYING);
 }
 
