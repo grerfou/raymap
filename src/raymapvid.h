@@ -320,6 +320,12 @@ static bool rmv_ValidateVideo(const RMV_Video *video, const char *funcName){
     return true;
 }
 
+static const char* rmv_GetFFmpegError(int errorCode){
+    static char errorBuf[AV_ERROR_MAX_STRING_SIZE];
+    av_strerror(errorCode, errorBuf, sizeof(errorBuf));
+    return errorBuf;
+}
+
 //--------------------------------------------------------------------------------------------
 // Public API
 //--------------------------------------------------------------------------------------------
@@ -671,7 +677,7 @@ RMVAPI void RMV_UpdateVideo(RMV_Video *video, float deltaTime) {
                         return;
                     }
                 } else {
-                    TraceLog(LOG_ERROR, "RAYMAPVID: Error reading frame: %d", ret);
+                    TraceLog(LOG_ERROR, "RAYMAPVID: Error reading frame: %s (%d)", rmv_GetFFmpegError(ret), ret);
                     return;
                 }
             }
@@ -682,7 +688,7 @@ RMVAPI void RMV_UpdateVideo(RMV_Video *video, float deltaTime) {
                 ret = avcodec_send_packet(video->codecCtx, video->packet);
 
                 if (ret < 0){
-                    TraceLog(LOG_ERROR, "RAYMAPVID: Error sending packet: %d", ret);
+                    TraceLog(LOG_ERROR, "RAYMAPVID: Error sending packet: %s (%d)", rmv_GetFFmpegError(ret) ,ret);
                     av_packet_unref(video->packet);
                     return;
                 }
@@ -716,7 +722,7 @@ RMVAPI void RMV_UpdateVideo(RMV_Video *video, float deltaTime) {
                     // Decoder has been fully flushed
                     frameDecoded = true;
                 } else {
-                    TraceLog(LOG_ERROR, "RAYMAPVID: Error receiving frame: %d", ret);
+                    TraceLog(LOG_ERROR, "RAYMAPVID: Error receiving frame: %s (%d)", rmv_GetFFmpegError(ret), ret);
                     av_packet_unref(video->packet);
                     return;
                 }
