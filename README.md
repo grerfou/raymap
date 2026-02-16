@@ -29,7 +29,7 @@ RayMap is a powerful, header-only C library for real-time projection mapping, su
 -  **Customizable Memory** - Override allocators for embedded systems
 -  **Lazy Evaluation** - Optimized mesh updates only when needed
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Installation
 
@@ -253,7 +253,7 @@ Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
 RayMap is licensed under the **zlib/libpng license** - same as Raylib.
 
 ```
-Copyright (c) 2025 grerfou
+Copyright (c) 2026 grerfou
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages
