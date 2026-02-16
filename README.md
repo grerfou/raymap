@@ -1,64 +1,47 @@
-#  RayMap
+# RayMap
 
-**Professional projection mapping library for Raylib**
+> **Professional projection mapping and surface warping library for Raylib**
 
-Real-time surface warping, multi-projector calibration, and interactive mapping tools for creative installations, museums, and live events.
+[![License](https://img.shields.io/badge/license-zlib%2Flibpng-blue.svg)](LICENSE)
+[![Raylib](https://img.shields.io/badge/raylib-5.0%2B-red.svg)](https://www.raylib.com)
+[![Version](https://img.shields.io/badge/version-1.1.0-green.svg)](https://github.com/grerfou/raymap/releases)
 
-[![License](https://img.shields.io/badge/license-zlib-blue.svg)](LICENSE)
-[![C99](https://img.shields.io/badge/C-99-blue.svg)](https://en.wikipedia.org/wiki/C99)
-
----
+RayMap is a powerful, header-only C library for real-time projection mapping, surface warping, and interactive calibration. Perfect for video mapping installations, multi-projector setups, and creative projection on non-flat surfaces.
 
 ##  Features
 
--  **Real-time projection mapping** - Bilinear and homography-based warping
--  **Interactive calibration** - Visual corner adjustment with mouse
--  **Multi-surface support** - Handle multiple projectors simultaneously
--  **Single-header library** - Drop `raymap.h` and you're ready
--  **Config persistence** - Save/load calibration settings
--  **GPU-accelerated** - Mesh-based rendering for performance
--  **Production-tested** - Memory-safe, leak-free (Valgrind + AddressSanitizer verified)
+### Core Capabilities
+-  **Bilinear & Homography Warping** - Perspective-correct transformations
+-  **Real-time Mesh Deformation** - Dynamic mesh generation with configurable resolution
+-  **Interactive Calibration** - Drag-and-drop corner adjustment with visual feedback
+-  **Configuration Save/Load** - Persistent calibration storage
+-  **Point Mapping Utilities** - Bidirectional coordinate transformation
 
----
+### Video Extension (RayMapVid)
+-  **FFmpeg Integration** - Professional video decoding (H.264, H.265, VP9, etc.)
+-  **Hardware Acceleration Ready** - NVDEC, VAAPI, VideoToolbox support (coming soon)
+-  **Playback Control** - Play, pause, loop, and state management
+-  **Seamless Integration** - Direct-to-texture rendering
 
-##  Quick Look
+### Architecture
+-  **Header-Only** - Single file, zero build dependencies
+-  **Opaque Types** - Clean API with hidden implementation
+-  **Customizable Memory** - Override allocators for embedded systems
+-  **Lazy Evaluation** - Optimized mesh updates only when needed
 
-<!-- TODO: Add GIF/screenshot here -->
-
-```c
-// Create surface
-RM_Surface *surface = RM_CreateSurface(800, 600, RM_MAP_BILINEAR);
-
-// Draw your content
-RM_BeginSurface(surface);
-    DrawText("Hello Mapping!", 200, 250, 60, WHITE);
-RM_EndSurface(surface);
-
-// Display with warping
-RM_DrawSurface(surface);
-```
-
----
-
-##  Quick Start
+## 🚀 Quick Start
 
 ### Installation
 
-1. **Copy the header**
-   ```bash
-   cp raymap.h your_project/
-   ```
+RayMap is header-only. Just copy the files to your project:
 
-2. **Include in ONE C file**
-   ```c
-   #define RAYMAP_IMPLEMENTATION
-   #include "raymap.h"
-   ```
+```bash
+# Core library
+curl -O https://raw.githubusercontent.com/grerfou/raymap/main/raymap.h
 
-3. **Link with raylib**
-   ```bash
-   gcc main.c -lraylib -lm -o app
-   ```
+# Video extension (optional)
+curl -O https://raw.githubusercontent.com/grerfou/raymap/main/raymapvid.h
+```
 
 ### Minimal Example
 
@@ -70,30 +53,30 @@ RM_DrawSurface(surface);
 
 int main(void)
 {
-    InitWindow(1280, 720, "RayMap Example");
+    InitWindow(1920, 1080, "RayMap - Minimal");
     
-    // Create mapping surface
-    RM_Surface *surface = RM_CreateSurface(640, 480, RM_MAP_BILINEAR);
+    // Create a 800x600 surface with homography warping
+    RM_Surface *surface = RM_CreateSurface(800, 600, RM_MAP_HOMOGRAPHY);
     
     // Setup calibration
     RM_Calibration calib = RM_CalibrationDefault(surface);
     
     while (!WindowShouldClose())
     {
-        // Update calibration (TAB to toggle)
-        RM_UpdateCalibrationInput(&calib, KEY_TAB);
+        // Update calibration (toggle with C key)
+        RM_UpdateCalibrationInput(&calib, KEY_C);
         
-        // Draw to surface
+        // Draw content to surface
         RM_BeginSurface(surface);
-            ClearBackground(RAYWHITE);
-            DrawCircle(320, 240, 100, RED);
+            ClearBackground(DARKBLUE);
+            DrawText("Hello RayMap!", 250, 250, 60, WHITE);
         RM_EndSurface(surface);
         
-        // Display mapped surface
+        // Render warped surface
         BeginDrawing();
             ClearBackground(BLACK);
             RM_DrawSurface(surface);
-            RM_DrawCalibration(calib);
+            RM_DrawCalibration(calib);  // Show calibration overlay
         EndDrawing();
     }
     
@@ -103,178 +86,208 @@ int main(void)
 }
 ```
 
----
+**Compile:**
+```bash
+gcc minimal.c -o minimal -lraylib -lm
+```
 
-##  Examples
+**Controls:**
+- `C` - Toggle calibration mode
+- `Mouse` - Drag corners to adjust warping
 
-### Basic Usage
-- [`examples/basic/simple_mapping`](examples/basic/simple_mapping) - Simple projection mapping
-- [`examples/basic/interactive_calibration/`](examples/basic/interactive_calibration) - Interactive calibration
+## Documentation
 
----
+- **[API Reference](docs/API.md)** - Complete function documentation
+- **[Examples](examples/)** - examples from basic to advanced
 
 ##  Use Cases
 
-| Application        | Example                                          |
-|--------------------|--------------------------------------------------|
-|  **Event Mapping** | Project on buildings, stages, irregular surfaces |
-|  **Game Dev**      | Multi-screen setups, curved displays             |
-|  **Museums**       | Interactive exhibitions, architectural mapping   |
-|  **Live Shows**    | VJ tools, concert visuals                        |
-|  **Corporate**     | Trade show booths, product launches              |
-
----
-
-##  API Overview
-
-### Core Functions
-
+### Video Mapping Installations
 ```c
-// Surface management
-RM_Surface *RM_CreateSurface(int width, int height, RM_MapMode mode);
-void RM_DestroySurface(RM_Surface *surface);
+#define RAYMAP_IMPLEMENTATION
+#include "raymap.h"
+#include "raymapvid.h"
 
-// Drawing
-void RM_BeginSurface(RM_Surface *surface);
-void RM_EndSurface(RM_Surface *surface);
-void RM_DrawSurface(RM_Surface *surface);
+RM_Surface *surface = RM_CreateSurface(1920, 1080, RM_MAP_HOMOGRAPHY);
+RMV_Video *video = RMV_LoadVideo("content.mp4");
 
-// Calibration
-RM_Calibration RM_CalibrationDefault(RM_Surface *surface);
-void RM_UpdateCalibrationInput(RM_Calibration *calibration, int toggleKey);
-void RM_DrawCalibration(RM_Calibration calibration);
+RMV_SetVideoLoop(video, true);
+RMV_PlayVideo(video);
 
-// Configuration
-bool RM_SaveConfig(const RM_Surface *surface, const char *filepath);
-bool RM_LoadConfig(RM_Surface *surface, const char *filepath);
+// In main loop:
+RMV_UpdateVideo(video, GetFrameTime());
 
-// Quad manipulation
-bool RM_SetQuad(RM_Surface *surface, RM_Quad quad);
-RM_Quad RM_GetQuad(const RM_Surface *surface);
+RM_BeginSurface(surface);
+    DrawTexture(RMV_GetVideoTexture(video), 0, 0, WHITE);
+RM_EndSurface(surface);
+
+RM_DrawSurface(surface);
 ```
 
-[Full API Documentation →](docs/API.md)
+### Multi-Projector Setup
+```c
+// Create 4 surfaces for quad projector setup
+RM_Surface *projectors[4];
+for (int i = 0; i < 4; i++) {
+    projectors[i] = RM_CreateSurface(1920, 1080, RM_MAP_HOMOGRAPHY);
+    RM_LoadConfig(projectors[i], TextFormat("projector_%d.cfg", i));
+}
 
----
+// Render each with edge blending
+for (int i = 0; i < 4; i++) {
+    RM_DrawSurface(projectors[i]);
+}
+```
 
-##  Architecture
+### Interactive Touch Surface
+```c
+// Detect clicks on warped surface
+if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+    Vector2 mousePos = GetMousePosition();
+    Vector2 texCoords = RM_UnmapPoint(surface, mousePos);
+    
+    if (texCoords.x >= 0) {
+        // Click is inside warped quad
+        TraceLog(LOG_INFO, "Clicked at UV: %.2f, %.2f", 
+                 texCoords.x, texCoords.y);
+    }
+}
+```
 
-### Mapping Modes
+##  Dependencies
 
-**Bilinear** (`RM_MAP_BILINEAR`)
-- Simple 4-point interpolation
-- Fast, good for flat surfaces
-- Default mesh: 16×16
+### Core Library (raymap.h)
+- **Raylib 5.0+** - Graphics library
+- **Standard C Library** - `math.h`, `stdlib.h`, `string.h`
 
-**Homography** (`RM_MAP_HOMOGRAPHY`)
-- Perspective-correct transformation
-- Better for tilted/angled surfaces
-- Default mesh: 32×32
+### Video Extension (raymapvid.h)
+- **FFmpeg 4.4+** - Video decoding
+  - `libavcodec` (required)
+  - `libavformat` (required)
+  - `libavutil` (required)
+  - `libswscale` (required)
 
-### Memory Management
+### Installation (Ubuntu/Debian)
+```bash
+# Raylib
+sudo apt install libraylib-dev
 
-- **Zero leaks** - Verified with Valgrind and AddressSanitizer
-- **RAII-style cleanup** - Automatic resource management
-- **Safe GPU upload** - Validated before swap
+# FFmpeg (for video support)
+sudo apt install libavcodec-dev libavformat-dev libavutil-dev libswscale-dev
+```
 
----
+### Installation (macOS)
+```bash
+# Raylib
+brew install raylib
+
+# FFmpeg
+brew install ffmpeg
+```
+
+##  Advanced Configuration
+
+### Custom Memory Allocators
+```c
+#define RMMALLOC(sz)     my_malloc(sz)
+#define RMCALLOC(n,sz)   my_calloc(n,sz)
+#define RMFREE(p)        my_free(p)
+
+#define RAYMAP_IMPLEMENTATION
+#include "raymap.h"
+```
+
+### Debug Mode
+```c
+#define RAYMAP_DEBUG
+#define RAYMAP_IMPLEMENTATION
+#include "raymap.h"
+
+// Enables RM_GetSurfaceMesh() for debugging
+Mesh *mesh = RM_GetSurfaceMesh(surface);
+```
+
+### Standalone Video Library
+```c
+// Use raymapvid without raymap
+#define RAYMAPVID_IMPLEMENTATION
+#include "raymapvid.h"
+```
+
+##  Building Examples
+
+```bash
+cd examples
+make
+
+# Or individually:
+gcc 01_minimal_surface.c -o 01_minimal_surface -lraylib -lm
+gcc 09_basic_video_playback.c -o 09_basic_video_playback \
+    -lraylib -lm -lavcodec -lavformat -lavutil -lswscale
+```
 
 ##  Testing
 
 ```bash
+# Run test suite (requires Unity test framework)
 cd tests
-make test-memory    # Run with AddressSanitizer
+make test
+
+# Memory leak check
+valgrind --leak-check=full ./tests/test_raymap
 ```
-
-**Test coverage:**
--  Memory management (16 tests)
--  Surface creation/destruction
--  Mesh generation
--  Quad validation
--  Configuration I/O
-
----
-
-##  Requirements
-
-- **Raylib 5.0+** ([Download](https://www.raylib.com/))
-- **C99 compiler** (GCC, Clang, MSVC)
-- **Math library** (`-lm` on Linux/macOS)
-
-### Platform Support
-
-| Platform | Status | Notes             |
-|----------|--------|-------------------|
-| Linux    | Tested | GCC 9+, Clang 10+ |
-
----
 
 ##  Contributing
 
-Contributions welcome! Please:
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
 
-1. Fork the repository
-2. Create a feature branch
-3. Add tests if applicable
-4. Submit a pull request
+**Areas for contribution:**
+-  Unit tests
+-  Documentation improvements
+-  Example projects
+-  Bug reports
+-  Feature requests
 
-### Code Style
+## License
 
-- Follow existing style (K&R-ish, 4 spaces)
-- Prefix all public symbols with `RM_`
-- Document public API functions
-- Keep single-header pattern
-
----
-
-##  License
-
-**zlib/libpng License**
+RayMap is licensed under the **zlib/libpng license** - same as Raylib.
 
 ```
 Copyright (c) 2025 grerfou
 
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from
-the use of this software.
+This software is provided 'as-is', without any express or implied
+warranty. In no event will the authors be held liable for any damages
+arising from the use of this software.
 
 Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it freely,
-subject to the following restrictions:
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
 
 1. The origin of this software must not be misrepresented; you must not
-   claim that you wrote the original software.
-2. Altered source versions must be plainly marked as such, and must not be
-   misrepresented as being the original software.
+   claim that you wrote the original software. If you use this software
+   in a product, an acknowledgment in the product documentation would be
+   appreciated but is not required.
+
+2. Altered source versions must be plainly marked as such, and must not
+   be misrepresented as being the original software.
+
 3. This notice may not be removed or altered from any source distribution.
 ```
 
----
+**FFmpeg Notice (raymapvid.h):**
+- FFmpeg libraries are licensed under **LGPL 2.1+**
+- Dynamic linking is used (no source code modifications)
+- FFmpeg source available at [ffmpeg.org](https://ffmpeg.org)
 
-##  Credits
+## Acknowledgments
 
-- Built with [Raylib](https://www.raylib.com/) by Ramon Santamaria
-- Inspired by production mapping tools and OpenCV
-- Homography math based on DLT algorithm
+- **Raylib** - raysan5 and contributors
+- **FFmpeg** - FFmpeg team
+- **stb libraries** - Sean Barrett (header-only inspiration)
+- **OpenCV** - Homography implementation reference
 
----
+## Contact & Support
 
-##  Contact & Support
+- **Issues**: [GitHub Issues](https://github.com/grerfou/raymap/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/grerfou/raymap/discussions)
 
--  **Issues:** [GitHub Issues](https://github.com/grerfou/raymap/issues)
--  **Discussions:** [GitHub Discussions](https://github.com/grerfou/raymap/discussions)
--  **Email:** benoit.fage@icloud.com (for commercial inquiries)
-
----
-
-##  Showcase
-
-Using RayMap in your project? [Let us know!](https://github.com/grerfou/raymap/discussions)
-
----
-
-<div align="center">
-
-[📖 Documentation](docs/) | [🎨 Examples](examples/)
-
-</div>
