@@ -1,0 +1,390 @@
+# RayMap — Developer Roadmap & Audit Fixes
+> Version cible : `v1.2.0` → `v2.0.0`  
+> Basé sur l'audit complet de `raymap.h` (1570 lignes) et `raymapvid.h` (807 lignes)  
+> Chaque item est **vérifié dans le code source** avec référence de ligne.
+
+---
+
+## Légende
+
+| Symbole | Signification |
+|---|---|
+| 🔴 | Bug / Correctness — doit être corrigé avant release |
+| 🟡 | Code smell / UX — doit être corrigé pour niveau pro |
+| 🟢 | Feature — évolution planifiée |
+| ✅ | Aucune action requise — déjà correct |
+
+---
+
+## PHASE 1 — Correctness Critique (v1.1.x → v1.2.0)
+> **Objectif :** Zéro bug de correctness dans l'API publique. Aucune régression visible par l'utilisateur.
+
+---
+
+### 🔴 FIX-01 — `RM_UnmapPoint` incorrect en mode bilinéaire
+**Fichier :** `raymap.h` · **Ligne :** 1539–1552  
+**Statut :** Confirmé, erreur mathématique certaine.
+
+**Problème :** En mode `RM_MAP_BILINEAR`, `RM_UnmapPoint` utilise l'inverse de la matrice homographique pour revenir en espace UV. Ce n'est pas correct : l'interpolation bilinéaire et la projection homographique sont deux transformations différentes. L'inverse de l'une n'est pas l'inverse de l'autre.
+
+Pour un quad rectangulaire ou légèrement déformé, l'erreur est faible (~quelques pixels). Pour un quad très en perspective (cas d'usage principal du projection mapping), l'erreur peut dépasser 10–20% de la surface.
+
+**Preuve dans le code :**
+```c
+// ligne 1540-1546 : mode BILINEAR mais on compute/utilise quand même l'homographie inverse
+if (surface->homographyNeedsUpdate) {
+    surface->homography = rm_ComputeHomography(surface->quad); // HOMOGRAPHY, pas bilinear
+    surface->homographyNeedsUpdate = false;
+}
+Matrix3x3 invH = rm_Matrix3x3Inverse(surface->homography); // inverse homographie
+Vector2 uv = rm_ApplyHomography(invH, screenPoint.x, screenPoint.y); // appliqué au point
+```
+
+**Fix :** Implémenter un vrai inversion bilinéaire. L'équation bilinéaire `P(u,v) = (1-u)(1-v)P00 + u(1-v)P10 + (1-u)vP01 + uvP11` n'a pas d'inverse analytique simple — il faut une résolution itérative (Newton-Raphson, 3–5 itérations suffisent pour converger à 0.001 pixel).
+
+```c
+// Squelette du fix
+static Vector2 rm_InverseBilinear(RM_Quad q, Vector2 p) {
+    // Initialisation : estimation initiale avec bounding box
+    float u = 0.5f, v = 0.5f;
+    for (int iter = 0; iter < 8; iter++) {
+        Vector2 est = rm_BilinearInterpolation(q.topLeft, q.topRight, q.bottomLeft, q.bottomRight, u, v);
+        // Calcul du résidu et de la Jacobienne
+        // ... Newton-Raphson step ...
+        // Clamp u,v à [0,1] à chaque itération
+    }
+    return (Vector2){ u, v };
+}
+```
+
+**Impact :** `RM_UnmapPoint` retourne des coordonnées UV incorrectes en mode bilinéaire. Toute application qui fait du hit-testing (clic dans la surface mappée) sera erronée.
+
+---
+
+### 🔴 FIX-02 — `__attribute__((unused))` non portable (MSVC)
+**Fichier :** `raymap.h` · **Lignes :** 438, 464  
+
+**Problème :** `__attribute__((unused))` est une extension GCC/Clang. Sur MSVC (`cl.exe`), ça ne compile pas. Raylib supporte Windows officiellement — une lib dans son écosystème doit faire pareil.
+
+**Preuve dans le code :**
+```c
+// ligne 438
+__attribute__((unused))
+static Matrix3x3 rm_Matrix3x3Multiply(Matrix3x3 a, Matrix3x3 b)
+
+// ligne 464
+__attribute__((unused))
+static Matrix3x3 rm_Matrix3x3Inverse(Matrix3x3 m)
+```
+
+**Fix A (immédiat) :** Macro portable à ajouter dans la section defines :
+```c
+#if defined(__GNUC__) || defined(__clang__)
+    #define RM_UNUSED __attribute__((unused))
+#elif defined(_MSC_VER)
+    #define RM_UNUSED
+#else
+    #define RM_UNUSED
+#endif
+```
+Puis remplacer `__attribute__((unused))` par `RM_UNUSED`.
+
+**Fix B (meilleur) :** `rm_Matrix3x3Multiply` et `rm_Matrix3x3Inverse` ne sont marquées `unused` que parce qu'elles ne sont pas appelées dans tous les paths de compilation. Si elles font partie de l'API interne prévue pour usage futur, les garder avec `RM_UNUSED`. Si `rm_Matrix3x3Inverse` est utilisée dans `RM_UnmapPoint` (ligne 1545), le `unused` est déjà faux — vérifier et supprimer le marqueur.
+
+---
+
+### 🔴 FIX-03 — `RM_IsCalibrating` appelle du input raylib
+**Fichier :** `raymap.h` · **Ligne :** 1292–1295  
+
+**Problème :** `RM_IsCalibrating` prend `RM_Calibration` par valeur (lecture seule sémantiquement) mais appelle `IsMouseButtonDown(MOUSE_BUTTON_LEFT)` — une fonction d'input hardware. Cette fonction ne devrait pas interroger le hardware. Si elle est appelée deux fois par frame, on dépend de l'ordre d'appel. Si elle est appelée hors du game loop (ex: dans un thread séparé), comportement non défini.
+
+**Preuve dans le code :**
+```c
+// ligne 1292-1295
+RMAPI bool RM_IsCalibrating(RM_Calibration calibration)
+{
+    return (calibration.activeCorner >= 0 && IsMouseButtonDown(MOUSE_BUTTON_LEFT)); // ← PROBLÈME
+}
+```
+
+**Fix :** Ajouter un champ `isDragging` dans `RM_Calibration`, mis à jour dans `RM_UpdateCalibration` :
+```c
+// Dans RM_Calibration (raymap.h, struct publique ligne 86)
+bool isDragging;   // true quand un coin est en cours de drag
+
+// Dans RM_UpdateCalibration :
+calibration->isDragging = (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && calibration->activeCorner >= 0);
+
+// RM_IsCalibrating devient pur :
+RMAPI bool RM_IsCalibrating(RM_Calibration calibration) {
+    return calibration.isDragging;
+}
+```
+
+**Note :** Ce changement est une breaking change mineure sur la struct `RM_Calibration`. À faire dans une v1.2.0 avec note de changelog.
+
+---
+
+### 🔴 FIX-04 — `const` cast-away dans `RMV_GetVideoTexture`
+**Fichier :** `raymapvid.h` · **Ligne :** 614  
+
+**Problème :** La fonction déclare `const RMV_Video *video` mais cast en `RMV_Video *` pour modifier l'état interne (lazy texture creation). C'est du Undefined Behavior en C si l'objet original a été déclaré `const`. À minima c'est une violation du contrat de l'interface.
+
+**Preuve dans le code :**
+```c
+// ligne 613-616
+if (!video->textureCreated) {
+    RMV_Video *v = (RMV_Video *)video; // ← cast-away const : UB potentiel
+    if (!rmv_CreateTexture(v)){
+```
+
+**Fix option A :** Retirer `const` de `RMV_GetVideoTexture` — la fonction mute l'état, donc elle n'est pas const.
+```c
+RMVAPI Texture2D RMV_GetVideoTexture(RMV_Video *video); // plus honnête
+```
+
+**Fix option B (plus propre) :** Déplacer la lazy init dans `RMV_UpdateVideo`. Quand l'état passe à PLAYING pour la première fois, créer la texture. `RMV_GetVideoTexture` reste `const` et retourne simplement `video->texture`. C'est l'approche recommandée.
+
+---
+
+### 🔴 FIX-05 — `rmv_GetFFmpegError` buffer statique non-réentrant
+**Fichier :** `raymapvid.h` · **Ligne :** 323–327  
+
+**Problème :** Le buffer est `static char errorBuf[...]`. Si deux erreurs FFmpeg sont loggées dans la même expression ou si la fonction est appelée depuis deux contextes, le second appel écrase le buffer avant que le premier log soit affiché.
+
+**Preuve dans le code :**
+```c
+// ligne 323-327
+static const char* rmv_GetFFmpegError(int errorCode){
+    static char errorBuf[AV_ERROR_MAX_STRING_SIZE]; // ← non-réentrant
+    av_strerror(errorCode, errorBuf, sizeof(errorBuf));
+    return errorBuf;
+}
+```
+
+**Fix :** Passer à un buffer caller-allocated ou utiliser `AV_ERROR_MAX_STRING_SIZE` sur la stack localement dans chaque site d'appel :
+```c
+// Option simple : macro inline
+#define RMV_FFERR(code) (av_strerror((code), (char[AV_ERROR_MAX_STRING_SIZE]){0}, AV_ERROR_MAX_STRING_SIZE), "ffmpeg_error")
+// Ou plus proprement, utiliser av_err2str (si disponible selon la version FFmpeg)
+```
+
+---
+
+## PHASE 2 — Qualité & Robustesse (v1.2.0 → v1.3.0)
+> **Objectif :** Code défensif, comportements prévisibles, zéro surprise pour un contributeur externe.
+
+---
+
+### 🟡 FIX-06 — Nom `rm_GenerateBilinearMesh` trompeur
+**Fichier :** `raymap.h` · **Ligne :** 699  
+
+**Problème :** La fonction génère le mesh pour les DEUX modes (bilinear ET homographique) selon `surface->mode`. Le nom laisse entendre qu'elle ne fait que du bilinéaire. Un contributeur qui lit le code 6 mois plus tard cherchera une `rm_GenerateHomographyMesh` qui n'existe pas.
+
+**Fix :** Renommer en `rm_RebuildMesh` ou `rm_GenerateMesh`. Mettre à jour l'appel dans `rm_EnsureMeshUpdated` (ligne 832).
+
+---
+
+### 🟡 FIX-07 — Incohérence limite mesh : 256 interne vs 64 public
+**Fichier :** `raymap.h` · **Lignes :** 707 (interne) et 1006–1009 (public)
+
+**Problème :** `rm_GenerateBilinearMesh` accepte jusqu'à 256x256 colonnes/lignes. `RM_SetMeshResolution` clamp à 64x64. Si quelqu'un appelle la fonction interne directement (ou si un futur refactor bypass l'API), on peut créer des meshes que l'API publique interdit.
+
+**Fix :** Définir une constante partagée :
+```c
+#define RM_MESH_MIN_RESOLUTION   4
+#define RM_MESH_MAX_RESOLUTION  64   // une seule source de vérité
+```
+Et l'utiliser dans les deux endroits. Supprimer le check `> 256` dans la fonction interne puisque l'API publique garantit déjà le clamp.
+
+---
+
+### 🟡 FIX-08 — `sscanf` sans vérification du retour (3 coins sur 4)
+**Fichier :** `raymap.h` · **Lignes :** 1402, 1406, 1409
+
+**Problème :** Seul `topLeft` vérifie le retour de `sscanf`. Les 3 autres coins lisent silencieusement des données potentiellement malformées sans signal d'erreur.
+
+**Preuve dans le code :**
+```c
+// ligne 1398 : check présent ✅
+if (sscanf(value, "%f,%f", &quad.topLeft.x, &quad.topLeft.y) == 2) { quadLoaded = true; }
+
+// lignes 1403, 1407, 1410 : pas de check ❌
+sscanf(value, "%f,%f", &quad.topRight.x, &quad.topRight.y);
+sscanf(value, "%f,%f", &quad.bottomRight.x, &quad.bottomRight.y);
+sscanf(value, "%f,%f", &quad.bottomLeft.x, &quad.bottomLeft.y);
+```
+
+**Fix :** Appliquer le même pattern sur les 4 coins. Retourner `false` si un coin est mal formé.
+
+---
+
+### 🟡 FIX-09 — Config I/O ignore `width` et `height` du fichier de config
+**Fichier :** `raymap.h` · **Lignes :** 1360–1411
+
+**Problème :** `RM_SaveConfig` écrit `width` et `height`. `RM_LoadConfig` les lit et les ignore. Si l'utilisateur charge une config sur une surface de dimensions différentes, les coordonnées du quad sont hors limites — aucun avertissement.
+
+**Fix :** Après parsing, vérifier si les dimensions chargées diffèrent de `surface->width/height` et logguer un `LOG_WARNING`. Optionnel : retourner `false` si les dimensions sont incompatibles (breaking change, à documenter).
+
+```c
+// À ajouter après le parsing
+int loadedWidth = 0, loadedHeight = 0;
+// ... parser width et loadedHeight ...
+if (loadedWidth > 0 && loadedWidth != surface->width) {
+    TraceLog(LOG_WARNING, "RAYMAP: LoadConfig - Config width (%d) differs from surface width (%d)",
+             loadedWidth, surface->width);
+}
+```
+
+---
+
+### 🟡 FIX-10 — Grille de calibration incorrecte en mode homographique
+**Fichier :** `raymap.h` · **Lignes :** 1233–1246
+
+**Problème :** `RM_DrawCalibrationGrid` utilise `Vector2Lerp` (interpolation linéaire) pour tracer la grille. En mode `RM_MAP_BILINEAR`, c'est correct. En mode `RM_MAP_HOMOGRAPHY`, les lignes devraient être perspectivées — elles sont en réalité légèrement courbes à cause de la division par `w`. La grille affichée ne correspond pas à la déformation réelle du mesh.
+
+**Impact UX :** L'artiste de mapping voit une grille qui ne représente pas fidèlement ce qu'il projette. C'est le cas d'usage principal de la lib.
+
+**Fix :** Passer par `RM_MapPoint` pour chaque point de grille au lieu de `Vector2Lerp` :
+```c
+// Pour chaque intersection de grille (u, v) :
+Vector2 screenPos = RM_MapPoint(surface, (Vector2){ u, v });
+```
+Ceci utilise automatiquement le bon mode (bilinéaire ou homographique).
+
+---
+
+### 🟡 FIX-11 — Boucle decode sans limite d'itérations dans `RMV_UpdateVideo`
+**Fichier :** `raymapvid.h` · **Ligne :** 656
+
+**Problème :** `while (!frameDecoded)` peut boucler indéfiniment sur un stream corrompu, un codec qui refuse de produire des frames, ou sur certains fichiers avec des streams audio-only intercalés.
+
+**Fix :** Ajouter un compteur de sécurité :
+```c
+int safetyCounter = 0;
+while (!frameDecoded && safetyCounter < 1000) {
+    safetyCounter++;
+    // ... decode logic ...
+}
+if (safetyCounter >= 1000) {
+    TraceLog(LOG_ERROR, "RAYMAPVID: Decode loop safety limit reached, possible corrupt stream");
+    video->state = RMV_STATE_ERROR;
+}
+```
+
+---
+
+### 🟡 FIX-12 — `codecName` et `formatName` pointent vers des strings FFmpeg internes
+**Fichier :** `raymapvid.h` · **Lignes :** 457–458
+
+**Problème :** Ces pointeurs sont valides tant que `formatCtx` et `codecCtx` sont ouverts. Après `RMV_UnloadVideo`, ils deviennent dangling. Si l'utilisateur stocke un `RMV_VideoInfo` et l'utilise après unload, c'est un use-after-free.
+
+**Preuve dans le code :**
+```c
+video->codecName = avcodec_get_name(codecParams->codec_id);  // pointeur interne FFmpeg
+video->formatName = video->formatCtx->iformat->name;          // pointeur interne FFmpeg
+```
+
+**Fix :** Dupliquer les strings à l'allocation :
+```c
+video->codecName = strdup(avcodec_get_name(codecParams->codec_id));
+video->formatName = strdup(video->formatCtx->iformat->name);
+// Et les free() dans rmv_CleanupVideo
+```
+Note : `strdup` n'est pas C99 standard (c'est POSIX). Pour portabilité maximale, implémenter `rmv_strdup` avec `malloc + strcpy`.
+
+---
+
+## PHASE 3 — Features & Ergonomie (v1.3.0 → v2.0.0)
+> **Objectif :** Rendre la lib utilisable dans des setups pro (multi-surface, multi-écran, edge blending).
+
+---
+
+### 🟢 FEAT-01 — Versionning du format de config
+**Priorité :** Haute (avant d'ajouter de nouvelles features config)
+
+Ajouter `version=1` dans le fichier de config et refuser le chargement de versions inconnues. Toute nouvelle feature qui ajoute des champs dans le fichier doit bumper la version.
+
+---
+
+### 🟢 FEAT-02 — Labels de coins dans la calibration
+**Priorité :** Moyenne
+
+Remplacer les index `0,1,2,3` par des labels `TL, TR, BR, BL` dans `RM_DrawCalibrationCorners`. Ajouter un champ `cornerLabels[4]` dans `RM_CalibrationConfig` pour permettre la customisation.
+
+---
+
+### 🟢 FEAT-03 — `RM_SetSurfaceAlpha` — opacité globale
+**Priorité :** Moyenne
+
+Pour le projection mapping, le cross-fading et l'edge blending sont essentiels. Ajouter un champ `float alpha` dans `RM_Surface` et l'appliquer via la couleur tint de `DrawMesh`.
+
+---
+
+### 🟢 FEAT-04 — Support multi-surface avec z-order
+**Priorité :** Haute (cas d'usage pro)
+
+Ajouter `int zOrder` dans `RM_Surface` et une fonction `RM_DrawSurfacesSorted(RM_Surface **surfaces, int count)` qui trie et dessine par z-order.
+
+---
+
+### 🟢 FEAT-05 — `RMV_SeekVideo` — seek temporel
+**Priorité :** Haute pour raymapvid
+
+L'API actuelle n'expose aucune fonction de seek. Pour du mapping VJ live, le seek est indispensable.
+```c
+RMVAPI bool RMV_SeekVideo(RMV_Video *video, float seconds);
+```
+Implémentation : `av_seek_frame` + `avcodec_flush_buffers`.
+
+---
+
+### 🟢 FEAT-06 — Hardware acceleration (RMV_HWACCEL_AUTO)
+**Priorité :** Basse (v2.0)
+
+L'enum `RMV_HWAccelType` est déjà défini mais `RMV_GetVideoInfo` retourne toujours `RMV_HWACCEL_NONE` (ligne 600). Implémenter la détection et l'activation HW via `av_hwdevice_ctx_create`.
+
+---
+
+### 🟢 FEAT-07 — `RM_SaveConfig` / `RM_LoadConfig` multi-surface
+**Priorité :** Moyenne
+
+Un setup de mapping réel a 2–8 surfaces. Ajouter :
+```c
+RMAPI bool RM_SaveConfigAll(RM_Surface **surfaces, int count, const char *filepath);
+RMAPI bool RM_LoadConfigAll(RM_Surface **surfaces, int count, const char *filepath);
+```
+
+---
+
+## Résumé des phases
+
+| Phase | Version | Items | Effort estimé |
+|---|---|---|---|
+| Phase 1 — Correctness | v1.2.0 | FIX-01 à FIX-05 | 2–4 jours |
+| Phase 2 — Qualité | v1.3.0 | FIX-06 à FIX-12 | 3–5 jours |
+| Phase 3 — Features | v2.0.0 | FEAT-01 à FEAT-07 | 2–4 semaines |
+
+---
+
+## Ordre de priorité absolu (si tu ne peux faire qu'une chose)
+
+```
+FIX-02 (portabilité MSVC)     → 30 min, impact immédiat
+FIX-03 (RM_IsCalibrating)     → 1h, correction de design
+FIX-08 (sscanf checks)        → 30 min, robustesse parsing
+FIX-04 (const cast-away)      → 1h, UB potentiel
+FIX-09 (config width/height)  → 1h, data integrity
+FIX-06 (renommage mesh)       → 15 min, lisibilité
+FIX-07 (limite mesh cohérente)→ 30 min, constantes partagées
+FIX-10 (grille calibration)   → 2h, correction UX majeure
+FIX-05 (buffer FFmpeg)        → 1h, fiabilité logs
+FIX-11 (boucle decode)        → 30 min, sécurité
+FIX-12 (strings FFmpeg)       → 1h, memory safety
+FIX-01 (UnmapPoint bilinear)  → 4–8h, algorithme non trivial
+```
+
+---
+
+*Roadmap générée sur audit complet du code source — chaque item est vérifiable à la ligne indiquée.*  
+*Auteur de l'audit : Claude Sonnet 4.6 — Février 2026*
