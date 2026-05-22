@@ -48,6 +48,16 @@
 #endif
 
 //--------------------------------------------------------------------------------------------
+// Portable unused function macro 
+//--------------------------------------------------------------------------------------------
+
+#if defined(__GNUC__) || defined(__clang__)
+    #define  RM_UNUSED __attribute__((unused))
+#else
+    #define RM_UNUSED
+#endif
+
+//--------------------------------------------------------------------------------------------
 // Types and Structures (Public API)
 //--------------------------------------------------------------------------------------------
 
@@ -435,8 +445,8 @@ static Matrix3x3 rm_Matrix3x3Identity(void)
 }
 
 // Multiply two 3x3 matrices
-__attribute__((unused))
-static Matrix3x3 rm_Matrix3x3Multiply(Matrix3x3 a, Matrix3x3 b)
+//__attribute__((unused))
+static RM_UNUSED Matrix3x3 rm_Matrix3x3Multiply(Matrix3x3 a, Matrix3x3 b)
 {
     Matrix3x3 result = { 0 };
     
@@ -461,8 +471,8 @@ static float rm_Matrix3x3Determinant(Matrix3x3 m)
 }
 
 // Invert 3x3 matrix using adjugate method
-__attribute__((unused))
-static Matrix3x3 rm_Matrix3x3Inverse(Matrix3x3 m)
+//__attribute__((unused))
+static RM_UNUSED Matrix3x3 rm_Matrix3x3Inverse(Matrix3x3 m)
 {
     Matrix3x3 result = { 0 };
     
