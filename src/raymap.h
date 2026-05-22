@@ -1405,18 +1405,34 @@ RMAPI bool RM_LoadConfig(RM_Surface *surface, const char *filepath)
             meshRows = atoi(value);
         }
         else if (strcmp(key, "topLeft") == 0) {
-            if (sscanf(value, "%f,%f", &quad.topLeft.x, &quad.topLeft.y) == 2) {
-                quadLoaded = true;
+            if (sscanf(value, "%f,%f", &quad.topLeft.x, &quad.topLeft.y) != 2) {
+                TraceLog(LOG_WARNING, "RAYMAP: LoadConfig - Malformed topLeft");
+                fclose(file);
+                return false;
             }
+            quadLoaded = true;
         }
         else if (strcmp(key, "topRight") == 0) {
-            sscanf(value, "%f,%f", &quad.topRight.x, &quad.topRight.y);
+            if (sscanf(value, "%f,%f", &quad.topRight.x, &quad.topRight.y) != 2) {
+                TraceLog(LOG_WARNING, "RAYMAP: LoadConfig - Malformed topRight");
+                fclose(file);
+                return false;
+            }
         }
         else if (strcmp(key, "bottomRight") == 0) {
-            sscanf(value, "%f,%f", &quad.bottomRight.x, &quad.bottomRight.y);
+            if (sscanf(value, "%f,%f", &quad.bottomRight.x, &quad.bottomRight.y) != 2) {
+                TraceLog(LOG_WARNING, "RAYMAP: LoadConfig - Malformed bottomRight");
+                fclose(file);
+                return false;
+            }
+
         }
         else if (strcmp(key, "bottomLeft") == 0) {
-            sscanf(value, "%f,%f", &quad.bottomLeft.x, &quad.bottomLeft.y);
+            if (sscanf(value, "%f,%f", &quad.bottomLeft.x, &quad.bottomLeft.y) != 2) {
+                TraceLog(LOG_WARNING, "RAYMAP: LoadConfig - Malformed bottomLeft");
+                fclose(file);
+                return false;
+            }
         }
     }
     
